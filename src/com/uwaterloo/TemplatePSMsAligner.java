@@ -19,7 +19,7 @@ public class TemplatePSMsAligner {
         for (PSM psm : psmList) {
             String peptide = psm.getPeptide();
             List<TMapPosition> tMapPositionList = proteinPeptideMap.get(peptide);
-            PSMAligned psmAligned = new PSMAligned(peptide, psm.getScan(), tMapPositionList);
+            PSMAligned psmAligned = new PSMAligned(psm.getScan(), peptide, tMapPositionList);
             psmAlignedList.add(psmAligned);
         }
         return psmAlignedList;
@@ -28,11 +28,11 @@ public class TemplatePSMsAligner {
 
     /**
      * Scan each psm, hooked it to the correct templatePosition of its corresponding template.
-     * @param templateList  the list of template with template AA information
+     * @param templateList the list of templates
      * @param psmAlignedList the list of PSMs with the aligned position information
      * @return Each template will have a list of TemplatePosition
      */
-    private List<TemplateHooked> hookPSMsToTemplate(int templateNum, List<Template> templateList,
+    private List<TemplateHooked> hookPSMsToTemplate(List<Template> templateList,
                                                     List<PSMAligned> psmAlignedList) {
         List<TemplateHooked> listOfTemplateHooked = new ArrayList<>();
         for (Template template : templateList) {
@@ -47,14 +47,24 @@ public class TemplatePSMsAligner {
                 int templateId = tMapPosition.getTemplateId();
                 int start = tMapPosition.getStart();
 
+                List<PSMAligned> psmListTobeHook = null;
                 if (isSpider) {
-                    listOfTemplateHooked.get(templateId).getArrayOfSpiderAligned()[start] = psmAligned;
+                    psmListTobeHook = listOfTemplateHooked.get(templateId).getSpiderList().get(start);
                 } else {
-                    listOfTemplateHooked.get(templateId).getArrayOfDBAligned()[start] = psmAligned;
+                    psmListTobeHook = listOfTemplateHooked.get(templateId).getDbList().get(start);
                 }
+                psmAlignedList.add(psmAligned);
             }
         }
         return listOfTemplateHooked;
+    }
+
+    public List<TemplateHooked> alignPSMstoTemplate(List<PSM> psmList, List<Template> templateList,
+                                    HashMap<String, List<TMapPosition>> peptideProteinMap) {
+        List<PSMAligned> psmAlignedList = buildListOfPSMAligned(psmList, peptideProteinMap);
+        List<TemplateHooked> templateHookedList = hookPSMsToTemplate(templateList, psmAlignedList);
+
+        return templateHookedList;
     }
 
     /*

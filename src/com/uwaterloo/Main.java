@@ -3,6 +3,7 @@ package com.uwaterloo;
 public class Main {
 
     public static void main(String[] args) {
-	// write your code here
+        Assembler assembler = new Assembler();
+        assembler.process();
     }
 }
