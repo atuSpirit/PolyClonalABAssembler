@@ -19,4 +19,9 @@ public class TMapPosition {
     public int getStart() {
         return start;
     }
+
+    @Override
+    public String toString() {
+        return "Template " + templateId + " start: " + start;
+    }
 }

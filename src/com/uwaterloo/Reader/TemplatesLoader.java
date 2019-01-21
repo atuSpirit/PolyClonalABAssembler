@@ -38,10 +38,10 @@ public class TemplatesLoader {
                         isContaminant = false;
                     }
 
-                    Pattern p = Pattern.compile(">(\\S)+");
+                    Pattern p = Pattern.compile("^>(\\S+)");
                     Matcher m = p.matcher(line);
                     if (m.find()) {
-                        accession = m.group(0);
+                        accession = m.group(1);
                     }
                     protein_seq = "";
                 } else {
@@ -65,6 +65,7 @@ public class TemplatesLoader {
         return templateList;
     }
 
+    /* Test the class */
     public static void main(String[] args) {
         String templateFasta = "D:\\Hao\\data\\for_analysis\\polyclonalAssemblerData\\Nuno.2016.heavy.template.fasta";
         TemplatesLoader loader = new TemplatesLoader();
