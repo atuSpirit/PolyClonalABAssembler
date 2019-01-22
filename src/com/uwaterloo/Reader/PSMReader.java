@@ -26,7 +26,10 @@ public class PSMReader extends CSVReader{
 
             String line;
             while ((line = br.readLine()) != null) {
-                fieldExtracted.add(readOneLine(line));
+                PSM psm = readOneLine(line);
+                if (psm != null) {
+                    fieldExtracted.add(psm);
+                }
             }
 
         } catch (FileNotFoundException e) {
@@ -39,11 +42,19 @@ public class PSMReader extends CSVReader{
     }
 
     private PSM readOneLine(String line) {
-        line = line.trim();
         String[] fields = line.split(",");
 
         String scan = fields[fieldIndexMap.get("Scan")];
         String peptide = fields[fieldIndexMap.get("Peptide")];
+
+        if (fieldIndexMap.get("Accession") >= fields.length) {
+            return null;
+        }
+        String proteinAccession = fields[fieldIndexMap.get("Accession")];
+
+        if (proteinAccession.equals("")) {
+            return null;
+        }
 
         return new PSM(scan, peptide);
     }

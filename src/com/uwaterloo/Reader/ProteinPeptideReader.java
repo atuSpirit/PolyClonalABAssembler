@@ -1,5 +1,6 @@
 package com.uwaterloo.Reader;
 
+import com.sun.xml.internal.ws.api.message.ExceptionHasMessage;
 import com.uwaterloo.TMapPosition;
 import com.uwaterloo.Template;
 
@@ -10,6 +11,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 /* Read in the protein-peptide.csv result of Peaks. */
 public class ProteinPeptideReader extends CSVReader {
@@ -44,10 +47,14 @@ public class ProteinPeptideReader extends CSVReader {
     private void readOneLine(String line) {
         String[] fields = line.trim().split(",");
 
-        String peptide = fields[fieldIndexMap.get("Peptide")];
+        String peptide = removeProteinEnd(fields[fieldIndexMap.get("Peptide")]);
         int start = Integer.valueOf(fields[fieldIndexMap.get("Start")]);
         String templateAccession = fields[fieldIndexMap.get("Protein Accession")];
         int templateId = this.proteinAccessionsIdMap.get(templateAccession);
+
+        if (peptide.equals("VL(sub T)VSSASTKGPSVF")) {
+            System.out.println();
+        }
 
         TMapPosition tMapPosition = new TMapPosition(templateId, start);
         if (peptideProteinMap.get(peptide) == null) {
@@ -57,6 +64,25 @@ public class ProteinPeptideReader extends CSVReader {
         } else {
             this.peptideProteinMap.get(peptide).add(tMapPosition);
         }
+    }
+
+    /**
+     * Helper function to remove the first AA and the last AA in the peptide
+     * sequence in protein-peptide.csv.  eg. Q.FE(sub N)WYM(sub V)DGVEVHNAK.T
+     * remove Q.  and .T
+     * @param peptide The peptide containing the AA next to the peptide sequence
+     *                in the protein sequence
+     * @return a peptide in the middle
+     */
+    private String removeProteinEnd(String peptide) {
+        Pattern p = Pattern.compile("(\\S).(\\S+).(\\S)");
+        Matcher m = p.matcher(peptide);
+        if (m.find()) {
+            peptide = m.group(2);
+        } else {
+            System.err.println(peptide + "does not match.");
+        }
+        return peptide;
     }
 
     /* Map the protein accession to protein id */

@@ -19,6 +19,9 @@ public class TemplatePSMsAligner {
         for (PSM psm : psmList) {
             String peptide = psm.getPeptide();
             List<TMapPosition> tMapPositionList = proteinPeptideMap.get(peptide);
+            if (tMapPositionList == null) {
+                System.out.println(psm.getScan() + " " + psm.getPeptide());
+            }
             PSMAligned psmAligned = new PSMAligned(psm.getScan(), peptide, tMapPositionList);
             psmAlignedList.add(psmAligned);
         }
