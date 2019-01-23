@@ -10,17 +10,17 @@ public class TemplatePSMsAligner {
      * According to the psm's peptide sequence, find its mapping position
      * in proteinPeptideMap.
      * @param psmList   The psm list read from DB psm.csv
-     * @param proteinPeptideMap The HashMap<Peptide, listOfMapOnProtein> built from protein-peptide.csv
+     * @param peptideProteinMap The HashMap<Peptide, listOfMapOnProtein> built from protein-peptide.csv
      * @return a list of aligned psms with its aligned position list added
      */
     private List<PSMAligned> buildListOfPSMAligned(List<PSM> psmList,
-                                                   HashMap<String, List<TMapPosition>> proteinPeptideMap) {
+                                                   HashMap<String, List<TMapPosition>> peptideProteinMap) {
         List<PSMAligned> psmAlignedList = new ArrayList<>();
         for (PSM psm : psmList) {
             String peptide = psm.getPeptide();
-            List<TMapPosition> tMapPositionList = proteinPeptideMap.get(peptide);
+            List<TMapPosition> tMapPositionList = peptideProteinMap.get(peptide);
             if (tMapPositionList == null) {
-                System.out.println(psm.getScan() + " " + psm.getPeptide());
+                System.out.println(psm.getScan() + " " + psm.getPeptide() + " contain no tMap position");
             }
             PSMAligned psmAligned = new PSMAligned(psm.getScan(), peptide, tMapPositionList);
             psmAlignedList.add(psmAligned);
@@ -50,13 +50,13 @@ public class TemplatePSMsAligner {
                 int templateId = tMapPosition.getTemplateId();
                 int start = tMapPosition.getStart();
 
-                List<PSMAligned> psmListTobeHook = null;
+                List<PSMAligned> psmListToBeHook = null;
                 if (isSpider) {
-                    psmListTobeHook = listOfTemplateHooked.get(templateId).getSpiderList().get(start);
+                    psmListToBeHook = listOfTemplateHooked.get(templateId).getSpiderList().get(start);
                 } else {
-                    psmListTobeHook = listOfTemplateHooked.get(templateId).getDbList().get(start);
+                    psmListToBeHook = listOfTemplateHooked.get(templateId).getDbList().get(start);
                 }
-                psmAlignedList.add(psmAligned);
+                psmListToBeHook.add(psmAligned);
             }
         }
         return listOfTemplateHooked;

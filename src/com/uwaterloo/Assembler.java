@@ -32,8 +32,8 @@ public class Assembler {
         char[] seq = templateHooked1.getSeq();
         int size = seq.length;
         for (int i = 0; i < size; i++) {
-            System.out.println(seq[i] + "\t" + templateHooked1.getDbList().size() + "\t" +
-                    templateHooked1.getSpiderList().size());
+            System.out.println(seq[i] + "\t" + templateHooked1.getDbList().get(i).size() + "\t" +
+                    templateHooked1.getSpiderList().get(i).size());
         }
     }
 }

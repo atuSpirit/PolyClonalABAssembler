@@ -41,6 +41,7 @@ public class ProteinPeptideReader extends CSVReader {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         return this.peptideProteinMap;
     }
 
@@ -48,13 +49,9 @@ public class ProteinPeptideReader extends CSVReader {
         String[] fields = line.trim().split(",");
 
         String peptide = removeProteinEnd(fields[fieldIndexMap.get("Peptide")]);
-        int start = Integer.valueOf(fields[fieldIndexMap.get("Start")]);
+        int start = Integer.valueOf(fields[fieldIndexMap.get("Start")]) - 1;
         String templateAccession = fields[fieldIndexMap.get("Protein Accession")];
         int templateId = this.proteinAccessionsIdMap.get(templateAccession);
-
-        if (peptide.equals("VL(sub T)VSSASTKGPSVF")) {
-            System.out.println();
-        }
 
         TMapPosition tMapPosition = new TMapPosition(templateId, start);
         if (peptideProteinMap.get(peptide) == null) {
@@ -64,6 +61,12 @@ public class ProteinPeptideReader extends CSVReader {
         } else {
             this.peptideProteinMap.get(peptide).add(tMapPosition);
         }
+
+/*
+        if (peptideProteinMap.get("KGFYPSDIAVEWESN(+.98)GQPEN(+.98)NY") != null) {
+            System.out.println();
+        }
+        */
     }
 
     /**
@@ -75,15 +78,22 @@ public class ProteinPeptideReader extends CSVReader {
      * @return a peptide in the middle
      */
     private String removeProteinEnd(String peptide) {
-        Pattern p = Pattern.compile("(\\S).(\\S+).(\\S)");
+        Pattern p = Pattern.compile("^(\\w\\.)(.+)(\\.\\w)$");
         Matcher m = p.matcher(peptide);
         if (m.find()) {
             peptide = m.group(2);
         } else {
-            System.err.println(peptide + "does not match.");
+            p = Pattern.compile("^(\\w\\.)(.+)");
+            m = p.matcher(peptide);
+            if (m.find()) {
+                peptide = m.group(2);
+            } else {
+                System.err.println(peptide + " does not match.");
+            }
         }
         return peptide;
     }
+
 
     /* Map the protein accession to protein id */
     public HashMap<String, Integer> mapProteinAccessionId(List<Template> templateList) {
