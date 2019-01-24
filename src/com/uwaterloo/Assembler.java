@@ -28,6 +28,7 @@ public class Assembler {
         TemplatePSMsAligner aligner = new TemplatePSMsAligner();
         List<TemplateHooked> templateHookedList = aligner.alignPSMstoTemplate(psmList, templateList, peptideProteinMap);
 
+
         TemplateHooked templateHooked1 = templateHookedList.get(0);
         char[] seq = templateHooked1.getSeq();
         int size = seq.length;

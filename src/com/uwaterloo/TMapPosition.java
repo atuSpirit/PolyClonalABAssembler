@@ -6,10 +6,12 @@ package com.uwaterloo;
 public class TMapPosition {
     int templateId; //The id of the template sequence
     int start;    //The start position the peptide is mapped to the template sequence
+    int end;    //The end position the peptide is mapped to the template sequence
 
-    public TMapPosition(int templateId, int start) {
+    public TMapPosition(int templateId, int start, int end) {
         this.templateId = templateId;
         this.start = start;
+        this.end = end;
     }
 
     public int getTemplateId() {
@@ -20,8 +22,13 @@ public class TMapPosition {
         return start;
     }
 
+    public int getEnd() {
+        return end;
+    }
+
     @Override
     public String toString() {
-        return "Template " + templateId + " start: " + start;
+        return "Template " + templateId + " start: " + start +
+                " end: " + end;
     }
 }

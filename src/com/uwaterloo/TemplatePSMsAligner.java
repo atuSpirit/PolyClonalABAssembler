@@ -2,7 +2,10 @@ package com.uwaterloo;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+
+import static javax.swing.UIManager.get;
 
 public class TemplatePSMsAligner {
     /**
@@ -11,7 +14,8 @@ public class TemplatePSMsAligner {
      * in proteinPeptideMap.
      * @param psmList   The psm list read from DB psm.csv
      * @param peptideProteinMap The HashMap<Peptide, listOfMapOnProtein> built from protein-peptide.csv
-     * @return a list of aligned psms with its aligned position list added
+     * @return a list of aligned psms with its aligned position list added, a list of scans is stored for each position
+     *          of the template.
      */
     private List<PSMAligned> buildListOfPSMAligned(List<PSM> psmList,
                                                    HashMap<String, List<TMapPosition>> peptideProteinMap) {
@@ -44,12 +48,14 @@ public class TemplatePSMsAligner {
 
         /* Hook each psms to the corresponding template */
         for (PSMAligned psmAligned : psmAlignedList) {
+            String scan = psmAligned.getScan();
             boolean isSpider = (psmAligned.getPositionOfVariations() != null);
             List<TMapPosition> tMapPositionList = psmAligned.getMapPositionList();
             for (TMapPosition tMapPosition : tMapPositionList) {
                 int templateId = tMapPosition.getTemplateId();
                 int start = tMapPosition.getStart();
 
+                /* Hook the psm information to corresponding dbList or spiderList */
                 List<PSMAligned> psmListToBeHook = null;
                 if (isSpider) {
                     psmListToBeHook = listOfTemplateHooked.get(templateId).getSpiderList().get(start);
@@ -57,6 +63,13 @@ public class TemplatePSMsAligner {
                     psmListToBeHook = listOfTemplateHooked.get(templateId).getDbList().get(start);
                 }
                 psmListToBeHook.add(psmAligned);
+
+                /* For each position the peptide mapped, add the scan to its scanList */
+                int end = tMapPosition.getStart();
+                ArrayList<LinkedList<String>> mappedScanList = listOfTemplateHooked.get(templateId).getMappedScanList();
+                for (int i = start; i < end; i++) {
+                    mappedScanList.get(i).add(scan);
+                }
             }
         }
         return listOfTemplateHooked;
@@ -69,38 +82,5 @@ public class TemplatePSMsAligner {
 
         return templateHookedList;
     }
-
-    /*
-    private List<List<TemplatePosition>> hookPSMsToTemplate(int templateNum,
-                                                        List<Template> templateList, List<PSMAligned> psmAlignedList) {
-        List<List<TemplatePosition>> listOfTemplatePositionList = new ArrayList<List<TemplatePosition>>();
-        // Initialize listOfTemplatePositionList for each template
-        for (int i = 0; i < templateNum; i++) {
-            listOfTemplatePositionList.add(new ArrayList<TemplatePosition>());
-        }
-
-        // Hook each psms to the corresponding template
-        for (PSMAligned psmAligned : psmAlignedList) {
-            boolean isSpider = (psmAligned.getPositionOfVariations() != null);
-            List<TMapPosition> tMapPositionList = psmAligned.getMapPositionList();
-            for (TMapPosition tMapPosition : tMapPositionList) {
-                int templateId = tMapPosition.getTemplateId();
-                int start = tMapPosition.getStart();
-                Template template = templateList.get(templateId);
-                char templateAA = template.getSeq()[start];
-
-                TemplatePosition templatePosition = new TemplatePosition(start, templateAA);
-                if (isSpider) {
-                    templatePosition.getSpList().add(psmAligned);
-                } else {
-                    templatePosition.getDbList().add(psmAligned);
-                }
-                listOfTemplatePositionList.get(templateId).add(templatePosition);
-            }
-        }
-        return listOfTemplatePositionList;
-    }
-
-*/
 
 }

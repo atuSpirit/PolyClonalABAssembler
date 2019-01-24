@@ -1,44 +1,30 @@
 package com.uwaterloo;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
- * The class storing spectra aligned to this position
+ * The class storing the amino acide matched to this position and
+ * their corresponding scan number and score.
  */
 public class TemplatePosition {
-    int pos;    //The position on the template
     char templateAA;    //The amino acid at the pos of the template
-    List<PSMAligned> dbList;   //The list of spectra with db result including PTM
-    List<PSMAligned> dnList;   //The List of spectra with de novo only result
-    List<PSMAligned> spList;   //The list of spectra with spider result
+    //The amino acid and
+    HashMap<Character, LinkedList<String>> mappedSpectrum;
 
-    public TemplatePosition(int pos, char templateAA) {
-        this.pos = pos;
+    public TemplatePosition(char templateAA) {
         this.templateAA = templateAA;
-        dbList = new ArrayList<>();
-        dnList = new ArrayList<>();
-        spList = new ArrayList<>();
+        this.mappedSpectrum = new HashMap<>();
     }
 
-    public int getPos() {
-        return pos;
-    }
 
     public char getTemplateAA() {
         return templateAA;
     }
 
-    public List<PSMAligned> getDbList() {
-        return dbList;
+    public HashMap<Character, LinkedList<String>> getMappedSpectrum() {
+        return this.mappedSpectrum;
     }
-
-    public List<PSMAligned> getDnList() {
-        return dnList;
-    }
-
-    public List<PSMAligned> getSpList() {
-        return spList;
-    }
-
 }
