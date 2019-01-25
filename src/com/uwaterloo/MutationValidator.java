@@ -72,7 +72,7 @@ public class MutationValidator {
      * @param psmAligned
      * @param scanPSMMap
      */
-    private HashMap<String, char[]> validateOnePSMAligned(TemplateHooked templateHooked, PSMAligned psmAligned,
+    private HashMap<String, String> validateOnePSMAligned(TemplateHooked templateHooked, PSMAligned psmAligned,
                                                     HashMap<String, PSMAligned> scanPSMMap) {
         int start = psmAligned.getStart();
         List<Integer> posList = new ArrayList<>();
@@ -81,25 +81,25 @@ public class MutationValidator {
         }
 
         int mutationNum = posList.size();
-        char[] templateAAComb = new char[mutationNum];
+        char[] templateAAPattern = new char[mutationNum];
         Set<String> scanSet = new HashSet<>();
 
         for (int i = 0; i < mutationNum; i++) {
             int mutationPos = posList.get(i);
             scanSet.addAll(templateHooked.getMappedScanList().get(mutationPos));
-            templateAAComb[i] = templateHooked.getSeq()[mutationPos];
+            templateAAPattern[i] = templateHooked.getSeq()[mutationPos];
         }
 
-        System.out.println("Template AA comb: " + new String(templateAAComb));
+        System.out.println("Template AA Pattern: " + new String(templateAAPattern));
 
-        HashMap<String, char[]> aminoCombination = new HashMap<>();
+        HashMap<String, String> scanAAPatternMap = new HashMap<>();
         for (String scan : scanSet) {
             PSMAligned correspondingPsmAligned = scanPSMMap.get(scan);
-            char[] AAComb = extractAAComb(correspondingPsmAligned, posList, templateAAComb);
-            aminoCombination.put(scan, AAComb);
+            String AAPattern = extractAAPattern(correspondingPsmAligned, posList, templateAAPattern);
+            scanAAPatternMap.put(scan, AAPattern);
         }
 
-        return aminoCombination;
+        return scanAAPatternMap;
 
 
     }
@@ -109,11 +109,11 @@ public class MutationValidator {
      * (ins) won't cause problem.  (del) will cause problem, need to rethink.
      * @param psmAligned
      * @param posList
-     * @param templateAAComb
+     * @param templateAAPattern
      * @return
      */
-    private char[] extractAAComb(PSMAligned psmAligned, List<Integer> posList,
-                                      char[] templateAAComb) {
+    private String extractAAPattern(PSMAligned psmAligned, List<Integer> posList,
+                                      char[] templateAAPattern) {
         int start = psmAligned.getStart();
         int end = psmAligned.getEnd() - start;
 
@@ -127,15 +127,43 @@ public class MutationValidator {
         for (int i = 0; i < posList.size(); i++) {
             int pos = posList.get(i) - start;
             if ((pos < 0) || (pos > end)) {
-                AAComb[i] = templateAAComb[i];
+                AAComb[i] = templateAAPattern[i];
             } else {
                 AAComb[i] = psmAligned.getAAs()[pos];
             }
 
         }
-        return AAComb;
+        String AAPattern = new String(AAComb);
+
+        return AAPattern;
     }
 
+    /**
+     * Compute the most significant amino acid combination based on all extracted AA patten
+     * from scans appears at these posList
+     * @param  scanAAPatternMap A set of scan and its extracted amino acids string pattern
+     * @return  significant amino acid strings
+     */
+    private List<String> computeSignificantAAPattern(HashMap<String, String> scanAAPatternMap) {
+        HashMap<String, Integer> patternFreqTable = new HashMap<>();
+        int total = 0;
+        for (String AAPattern : scanAAPatternMap.values()) {
+            total += 1;
+            if (patternFreqTable.containsKey(AAPattern)) {
+                patternFreqTable.put(AAPattern, patternFreqTable.get(AAPattern) + 1);
+            } else {
+                patternFreqTable.put(AAPattern, 1);
+            }
+        }
+
+        /* Print the frequency of each pattern */
+        for (Map.Entry<String, Integer> entry : patternFreqTable.entrySet()) {
+            System.out.println(entry.getKey() + " " + entry.getValue());
+        }
+        return null;
+    }
+
+    /* Test function to validate the patterns extracted */
     private void printExtractedPSMs(HashMap<String,char[]> extractedPSMsMap) {
         for (Map.Entry<String, char[]> entry : extractedPSMsMap.entrySet()) {
             String scan = entry.getKey();
@@ -156,8 +184,9 @@ public class MutationValidator {
 
         System.out.println("The first psm: " + psmAligned.toString());
 
-        HashMap<String, char[]> extractedPSMsMap = validateOnePSMAligned(templateHooked, psmAligned, scanPSMMap);
-        printExtractedPSMs(extractedPSMsMap);
+        HashMap<String, String> extractedPSMPatternMap = validateOnePSMAligned(templateHooked, psmAligned, scanPSMMap);
+        //printExtractedPSMs(extractedPSMsMap);
+        computeSignificantAAPattern(extractedPSMPatternMap);
     }
 
 
