@@ -28,7 +28,6 @@ public class TMapPosition {
 
     @Override
     public String toString() {
-        return "Template " + templateId + " start: " + start +
-                " end: " + end;
+        return " start: " + start + " end: " + end;
     }
 }

@@ -6,9 +6,6 @@ public class Template {
     char[] seq;
     char[] modifiedSeq;
 
-    public Template() {
-
-    }
 
     public Template(int templateId, String templateAccession, char[] seq) {
         this.templateId = templateId;

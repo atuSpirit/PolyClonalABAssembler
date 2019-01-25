@@ -4,7 +4,9 @@ import com.uwaterloo.Reader.PSMReader;
 import com.uwaterloo.Reader.ProteinPeptideReader;
 import com.uwaterloo.Reader.TemplatesLoader;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 
 public class Assembler {
@@ -29,12 +31,48 @@ public class Assembler {
         List<TemplateHooked> templateHookedList = aligner.alignPSMstoTemplate(psmList, templateList, peptideProteinMap);
 
 
-        TemplateHooked templateHooked1 = templateHookedList.get(0);
-        char[] seq = templateHooked1.getSeq();
+        int templateId = 0;
+        /* Test one first template */
+        TemplateHooked aTemplateHooked = templateHookedList.get(templateId);
+        /*
+        char[] seq = aTemplateHooked.getSeq();
         int size = seq.length;
         for (int i = 0; i < size; i++) {
-            System.out.println(seq[i] + "\t" + templateHooked1.getDbList().get(i).size() + "\t" +
-                    templateHooked1.getSpiderList().get(i).size());
+            System.out.println(seq[i] + "\t" + aTemplateHooked.getDbList().get(i).size() + "\t" +
+                    aTemplateHooked.getSpiderList().get(i).size() + "\t" +
+                    aTemplateHooked.getMappedScanList().get(i).size());
         }
+        */
+
+        ArrayList<LinkedList<PSMAligned>> listOfPSMAlignedList = aligner.getPsmAlignedList();
+        MapScanPSMAligned scanPSMMapper = new MapScanPSMAligned(listOfPSMAlignedList.get(templateId));
+        HashMap<String, PSMAligned> scanPSMMap = scanPSMMapper.getScanPSMMap();
+
+        MutationValidator validator = new MutationValidator();
+        validator.validateMutations(aTemplateHooked, scanPSMMap);
+
+    }
+
+    public void testMutationValidator(TemplateHooked templateHooked) {
+        MutationValidator validator = new MutationValidator();
+        int maxMutationNum = validator.findMaxMutationNumPerPSM(templateHooked);
+        System.out.println("Max mutation num: " + maxMutationNum);
+        int mutationNum = 3;
+        List<Integer> posWithMaxMutationNumList = validator.extractPositionWithMutationNum(templateHooked, mutationNum);
+
+        for (Integer pos : posWithMaxMutationNumList) {
+            List<PSMAligned> psmAlignedList = templateHooked.getSpiderList().get(pos);
+            System.out.print("pos: " + pos);
+            for (PSMAligned psmAligned : psmAlignedList) {
+                if (psmAligned.getPositionOfVariations().size() == mutationNum) {
+                    System.out.print(" " + psmAligned.getScan());
+                }
+            }
+            System.out.println();
+
+        }
+
+
+
     }
 }

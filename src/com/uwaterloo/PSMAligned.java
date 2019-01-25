@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PSMAligned extends PSM {
+    int templateId; //The id of the template sequence
+    int start;
+    int end;
+
     /*The amino acid of each position. If spider peptide, score the true seq.*/
     char[] AAs;
     /* The confidence score of each AA. If peptide is a de novo only, it will be
@@ -15,17 +19,21 @@ public class PSMAligned extends PSM {
         deletion) located. If not spider seq, this field is empty.
      */
     List<Integer> positionOfVariations;
-    /* The list of positions on template the peptide of the psm is mapped to.
-     * Computed by connecting PSM and protein-peptide table. */
-    List<TMapPosition> mapPositionList;
 
-    public PSMAligned(String scan, String peptide, List<TMapPosition> tMapPositionList) {
+    /*  Based on an assumption that one psm can only map to one location one one template,
+        the field is outdated: The list of positions on template the peptide of the psm is mapped to.
+     * Computed by connecting PSM and protein-peptide table.
+    List<TMapPosition> mapPositionList; */
+
+    public PSMAligned(String scan, String peptide, int templateId, int start, int end) {
         super(scan, peptide);
 
+        this.templateId = templateId;
         this.AAs = convertToAA(peptide);
         this.confScores = convertToConfScore(AAs);
         setPositionOfVariations(peptide);
-        this.mapPositionList = tMapPositionList;
+        this.start = start;
+        this.end = end;
     }
 
 
@@ -52,7 +60,7 @@ public class PSMAligned extends PSM {
 
     private void setPositionOfVariations(String peptide) {
         if (peptide.contains("sub") || peptide.contains("ins") || peptide.contains("del")) {
-            this.positionOfVariations = new ArrayList<Integer>();
+            this.positionOfVariations = new ArrayList<>();
 
             //Remove the PTM
             peptide = peptide.replaceAll("\\(\\S(\\d)+.(\\d)+\\)", "");
@@ -65,7 +73,8 @@ public class PSMAligned extends PSM {
             while (i < length) {
                 c = peptide.charAt(i);
                 if (c == '(') {
-                    this.positionOfVariations.add(pos - 1);
+                    pos -= 1;
+                    this.positionOfVariations.add(pos);
                     while (c != ')') {
                         i += 1;
                         c = peptide.charAt(i);
@@ -80,6 +89,9 @@ public class PSMAligned extends PSM {
         }
     }
 
+    public int getTemplateId() {
+        return templateId;
+    }
 
     public char[] getAAs() {
         return AAs;
@@ -93,7 +105,30 @@ public class PSMAligned extends PSM {
         return positionOfVariations;
     }
 
+    /*
     public List<TMapPosition> getMapPositionList() {
         return mapPositionList;
+    }
+    */
+
+    public int getStart() {
+        return start;
+    }
+
+    public int getEnd() {
+        return end;
+    }
+
+    @Override
+    public String toString() {
+        String posOfVar = "";
+        for (int i : positionOfVariations) {
+            posOfVar += String.valueOf(i) + " ";
+        }
+        String str = "Scan: " + scan + " Peptide: " + peptide +
+                " char[]: " + new String(AAs) +
+                "position of variations: " + posOfVar +
+                " start: " + start + " end: " + end;
+        return str;
     }
 }
