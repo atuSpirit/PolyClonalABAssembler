@@ -13,8 +13,8 @@ public class MutationValidator {
      */
     int findMaxMutationNumPerPSM(TemplateHooked templateHooked) {
         int maxMutationNum = 0;
-        ArrayList<LinkedList<PSMAligned>> listOfSpiderList = templateHooked.getSpiderList();
-        for (LinkedList<PSMAligned> psmAlignedList : listOfSpiderList) {
+        ArrayList<ArrayList<PSMAligned>> listOfSpiderList = templateHooked.getSpiderList();
+        for (ArrayList<PSMAligned> psmAlignedList : listOfSpiderList) {
             for (PSMAligned psmAligned : psmAlignedList) {
                 if (psmAligned.getPositionOfVariations() == null) {
                     continue;
@@ -32,16 +32,17 @@ public class MutationValidator {
     /* Extract positions where containing psm with mutationNum mutations */
     public ArrayList<Integer> extractPositionWithMutationNum(TemplateHooked templateHooked, int mutationNum) {
         ArrayList<Integer> posWithMutationNumList = new ArrayList<>();
-        ArrayList<LinkedList<PSMAligned>> listOfSpiderList = templateHooked.getSpiderList();
+        ArrayList<ArrayList<PSMAligned>> listOfSpiderList = templateHooked.getSpiderList();
         int size = listOfSpiderList.size();
         for (int pos = 0; pos < size; pos++) {
-            LinkedList<PSMAligned> psmAlignedList = listOfSpiderList.get(pos);
+            ArrayList<PSMAligned> psmAlignedList = listOfSpiderList.get(pos);
             for (PSMAligned psmAligned : psmAlignedList) {
                 if (psmAligned.getPositionOfVariations() == null) {
                     continue;
                 }
                 if (psmAligned.getPositionOfVariations().size() == mutationNum) {
                     posWithMutationNumList.add(pos);
+                    break;
                 }
             }
         }
@@ -55,14 +56,124 @@ public class MutationValidator {
      * @param mutatedNum
      * @return the first PSMAligned which start at pos and have mutatedNum mutations, null if not found.
      */
-    public PSMAligned getFirstPSMAlignedGivenPosAndMutatedNum(TemplateHooked templateHooked, int pos, int mutatedNum) {
+    public List<PSMAligned> getListOfPSMAlignedGivenPosAndMutatedNum(TemplateHooked templateHooked, int pos, int mutatedNum) {
         List<PSMAligned> psmAlignedList = templateHooked.getSpiderList().get(pos);
+        List<PSMAligned> psmListGivenPosAndMutatedNum = new LinkedList<>();
         for (PSMAligned psmAligned : psmAlignedList) {
             if (psmAligned.getPositionOfVariations().size() == mutatedNum) {
-                return psmAligned;
+                psmListGivenPosAndMutatedNum.add(psmAligned);
             }
         }
-        return null;
+        return psmListGivenPosAndMutatedNum;
+    }
+
+    /**
+     * Decide whether the PSM with mutation should be kept or discarded on the templateHooked.
+     * Get all scans crossing the mutation position list.
+     * Return a list of significant mutated list on template
+     * @param templateHooked
+     * @param psmAligned
+     * @param scanPSMMap
+     * @return <list<position>, mutationPattern>
+     */
+    private HashMap<List<Integer>, List<String>> validateOnePSMAligned(TemplateHooked templateHooked, PSMAligned psmAligned,
+                                                                 HashMap<String, PSMAligned> scanPSMMap) {
+        double threshold = 0.1;
+
+        /* validate the psms having same list of variation positions */
+        HashMap<String, String> extractedScanAAPatternMap = buildScanAAPatternMapForOnePSM(templateHooked,
+                psmAligned, scanPSMMap);
+        //printExtractedPSMs(extractedPSMsMap);
+        String templatePattern = extractedScanAAPatternMap.get("Template");
+        HashMap<String, Integer> patternFreqTable = countPatternFreqTable(extractedScanAAPatternMap);
+        List<String> significantMutatedPatternsOnTemplate = getSignificantMutatedList(patternFreqTable,
+                threshold);
+
+        /* Remove scans and PSMAlign containing unsignificant mutation patterns */
+        HashSet<String> significantPatterns = new HashSet<>(significantMutatedPatternsOnTemplate);
+        removeUnsignificantMutatedScans(templateHooked, psmAligned.getStart(),
+                extractedScanAAPatternMap, significantPatterns);
+
+        HashMap<List<Integer>, List<String>> mutatedAAsOnTemplate = new HashMap<>();
+        /* heterogous AA on template */
+        if (significantMutatedPatternsOnTemplate.size() > 1) {
+            int start = psmAligned.getStart();
+            List<Integer> posList = new ArrayList<>();
+            for (int i : psmAligned.getPositionOfVariations()) {
+                posList.add(i + start);
+            }
+
+            mutatedAAsOnTemplate.put(posList, significantMutatedPatternsOnTemplate);
+        }
+        return mutatedAAsOnTemplate;
+    }
+
+    private void removeUnsignificantMutatedScans(TemplateHooked templateHooked, int pos,
+                                                 HashMap<String, String> scanAAPatternMap,
+                                                 Set<String> significantPatterns) {
+        Set<String> unsignificantScanSet = new HashSet<>();
+        for (String scan : scanAAPatternMap.keySet()) {
+            if (significantPatterns.contains(scanAAPatternMap.get(scan)) == false) {
+                unsignificantScanSet.add(scan);
+            }
+        }
+
+        /* remove from spiderList of position pos on templateHooked */
+        ArrayList<PSMAligned> spiderList = templateHooked.getSpiderList().get(pos);
+        int spiderListSize = spiderList.size();
+        ArrayList<PSMAligned> newSpiderList = new ArrayList<>();
+        for (int index = 0; index < spiderListSize; index++) {
+            PSMAligned psmAligned = spiderList.get(index);
+            if (!unsignificantScanSet.contains(psmAligned.getScan())) {
+                newSpiderList.add(psmAligned);
+                spiderList.set(index, null);
+            }
+        }
+        templateHooked.getSpiderList().set(pos, newSpiderList);
+
+        /* remove from scanList of position pos on templateHooked */
+        ArrayList<String> scanList = templateHooked.getMappedScanList().get(pos);
+        int scanListSize = scanList.size();
+        ArrayList<String> newScanList = new ArrayList<>();
+        for (int index = 0; index < scanListSize; index++) {
+            String scan = scanList.get(index);
+            if (!unsignificantScanSet.contains(scan)) {
+                newScanList.add(scan);
+                scanList.set(index, null);
+            }
+        }
+        templateHooked.getMappedScanList().set(pos, newScanList);
+    }
+
+
+    private List<String> getSignificantMutatedList(HashMap<String, Integer> patternFreqTable,
+                                                                     double threshold) {
+        List<String> significantMutatedPattern = new ArrayList<>();
+        /* Get the sum of scans */
+        double total = 0.0;
+        for (int value : patternFreqTable.values()) {
+            total += value;
+        }
+
+        /* Get the 3 patterns with top 3 frequency */
+        String[] top3Patterns = getPatternsWithTop3Freq(patternFreqTable);
+
+        /* Print significant freq*/
+        for (String pattern : top3Patterns) {
+            //Skip the case that there is less than 3 patterns in total
+            if (pattern == null) {
+                break;
+            }
+            int freq = patternFreqTable.get(pattern);
+            double ratio = freq / total;
+
+            if (ratio > threshold) {
+                String patternFreq = String.format("%s_%.2f", pattern, ratio);
+                significantMutatedPattern.add(patternFreq);
+//                System.out.printf("%s %d %.4f\n", pattern, freq, freq / total);
+            }
+        }
+        return significantMutatedPattern;
     }
 
     /**
@@ -72,8 +183,8 @@ public class MutationValidator {
      * @param psmAligned
      * @param scanPSMMap
      */
-    private HashMap<String, String> validateOnePSMAligned(TemplateHooked templateHooked, PSMAligned psmAligned,
-                                                    HashMap<String, PSMAligned> scanPSMMap) {
+    private HashMap<String, String> buildScanAAPatternMapForOnePSM(TemplateHooked templateHooked, PSMAligned psmAligned,
+                                                                   HashMap<String, PSMAligned> scanPSMMap) {
         int start = psmAligned.getStart();
         List<Integer> posList = new ArrayList<>();
         for (int i : psmAligned.getPositionOfVariations()) {
@@ -86,13 +197,17 @@ public class MutationValidator {
 
         for (int i = 0; i < mutationNum; i++) {
             int mutationPos = posList.get(i);
+
             scanSet.addAll(templateHooked.getMappedScanList().get(mutationPos));
             templateAAPattern[i] = templateHooked.getSeq()[mutationPos];
         }
 
-        System.out.println("Template AA Pattern: " + new String(templateAAPattern));
+//        System.out.println("Template AA Pattern: " + new String(templateAAPattern));
 
         HashMap<String, String> scanAAPatternMap = new HashMap<>();
+        /* Add the template pattern in scanAAPatternMap */
+        scanAAPatternMap.put("Template", new String(templateAAPattern));
+
         for (String scan : scanSet) {
             PSMAligned correspondingPsmAligned = scanPSMMap.get(scan);
             String AAPattern = extractAAPattern(correspondingPsmAligned, posList, templateAAPattern);
@@ -100,10 +215,21 @@ public class MutationValidator {
         }
 
         return scanAAPatternMap;
-
-
     }
 
+    /* Count the frequency of each pattern */
+    private HashMap<String, Integer> countPatternFreqTable(HashMap<String, String> scanAAPatternMap) {
+        HashMap<String, Integer> patternFreqTable = new HashMap<>();
+
+        for (String AAPattern : scanAAPatternMap.values()) {
+            if (patternFreqTable.containsKey(AAPattern)) {
+                patternFreqTable.put(AAPattern, patternFreqTable.get(AAPattern) + 1);
+            } else {
+                patternFreqTable.put(AAPattern, 1);
+            }
+        }
+        return patternFreqTable;
+    }
     /**
      * Extract the amino acids in the posList.
      * (ins) won't cause problem.  (del) will cause problem, need to rethink.
@@ -138,29 +264,29 @@ public class MutationValidator {
         return AAPattern;
     }
 
-    /**
-     * Compute the most significant amino acid combination based on all extracted AA patten
-     * from scans appears at these posList
-     * @param  scanAAPatternMap A set of scan and its extracted amino acids string pattern
-     * @return  significant amino acid strings
-     */
-    private List<String> computeSignificantAAPattern(HashMap<String, String> scanAAPatternMap) {
-        HashMap<String, Integer> patternFreqTable = new HashMap<>();
-        int total = 0;
-        for (String AAPattern : scanAAPatternMap.values()) {
-            total += 1;
-            if (patternFreqTable.containsKey(AAPattern)) {
-                patternFreqTable.put(AAPattern, patternFreqTable.get(AAPattern) + 1);
-            } else {
-                patternFreqTable.put(AAPattern, 1);
+    private String[] getPatternsWithTop3Freq(HashMap<String, Integer> patternFreqTable) {
+        String[] top3Patterns = new String[3];
+        int[] top3Freqs = {-1, -1, -1};
+        for (Map.Entry<String, Integer> entry : patternFreqTable.entrySet()) {
+            int freq = entry.getValue();
+            if (freq >= top3Freqs[0]) {
+                top3Freqs[2] = top3Freqs[1];
+                top3Freqs[1] = top3Freqs[0];
+                top3Freqs[0] = freq;
+                top3Patterns[2] = top3Patterns[1];
+                top3Patterns[1] = top3Patterns[0];
+                top3Patterns[0] = entry.getKey();
+            } else if (freq >= top3Freqs[1]) {
+                top3Freqs[2] = top3Freqs[1];
+                top3Patterns[2] = top3Patterns[1];
+                top3Freqs[1] = freq;
+                top3Patterns[1] = entry.getKey();
+            } else if (freq >= top3Freqs[0]) {
+                top3Freqs[2] = freq;
+                top3Patterns[2] = entry.getKey();
             }
         }
-
-        /* Print the frequency of each pattern */
-        for (Map.Entry<String, Integer> entry : patternFreqTable.entrySet()) {
-            System.out.println(entry.getKey() + " " + entry.getValue());
-        }
-        return null;
+        return top3Patterns;
     }
 
     /* Test function to validate the patterns extracted */
@@ -173,21 +299,92 @@ public class MutationValidator {
 
     }
 
-    public void validateMutations(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap) {
-        int maxMutationNum = findMaxMutationNumPerPSM(templateHooked);
-        System.out.println("Max mutation num: " + maxMutationNum);
-        int mutationNum = 4;
-        List<Integer> posWithMaxMutationNumList = extractPositionWithMutationNum(templateHooked, mutationNum);
 
-        int pos = posWithMaxMutationNumList.get(0);
-        PSMAligned psmAligned = getFirstPSMAlignedGivenPosAndMutatedNum(templateHooked, pos, mutationNum);
+    /**
+     * Get one psm from psmAlignedList whose variation positions haven't appear in
+     * variationPosChecked set.  Add its variation positions to the set.
+     * @param variationPosChecked  a Set containing all checked variation positions
+     * @param psmAlignedList    a list of psmAligned
+     * @return a PSM whose variation positions haven't appear in
+     *      variationPosChecked set.  variationPosChecked set is updated by adding
+     *      those new variation positions.
+     */
+    private PSMAligned getOnePSMWithNewVariationPosition(Set<Integer> variationPosChecked, List<PSMAligned> psmAlignedList) {
+        /* Pick one psm with new list of variation positions */
+        boolean containNewVaritions = false;
+        PSMAligned psmAlignedChosen = null;
 
-        System.out.println("The first psm: " + psmAligned.toString());
-
-        HashMap<String, String> extractedPSMPatternMap = validateOnePSMAligned(templateHooked, psmAligned, scanPSMMap);
-        //printExtractedPSMs(extractedPSMsMap);
-        computeSignificantAAPattern(extractedPSMPatternMap);
+        for (PSMAligned psmAligned : psmAlignedList) {
+            List<Integer> posOfVariations = psmAligned.getPositionOfVariations();
+            for (int i : posOfVariations) {
+                if (!variationPosChecked.contains(i)) {
+                    variationPosChecked.add(i);
+                    containNewVaritions = true;
+                }
+            }
+            if (containNewVaritions == true) {
+                psmAlignedChosen = psmAligned;
+                break;
+            }
+        }
+        return psmAlignedChosen;
     }
 
 
+    public void validateMutations(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap) {
+        int maxMutationNum = findMaxMutationNumPerPSM(templateHooked);
+        System.out.println("Max mutation num: " + maxMutationNum);
+        HashMap<List<Integer>, List<String>> mutationsOnTemplate = new HashMap<>();
+
+        for (int mutationNum = maxMutationNum; mutationNum > 0; mutationNum--) {
+            List<Integer> posWithMaxMutationNumList = extractPositionWithMutationNum(templateHooked, mutationNum);
+
+
+            //int pos = posWithMaxMutationNumList.get(0);
+            for (int pos : posWithMaxMutationNumList) {
+                //System.out.println("pos: " + pos);
+
+                Set<Integer> variationPosChecked = new HashSet<>();
+                while (true) {
+                    List<PSMAligned> psmAlignedList = getListOfPSMAlignedGivenPosAndMutatedNum(templateHooked, pos, mutationNum);
+                    if (psmAlignedList.size() == 0) {
+                        break;
+                    }
+
+<<<<<<< HEAD
+                    PSMAligned psmAligned = getOnePSMWithNewVariationPosition(variationPosChecked, psmAlignedList);
+                    if (psmAligned == null) {
+                        break;
+                    }
+
+
+                    HashMap<List<Integer>, List<String>> partMutatedAAsOnTemplate = validateOnePSMAligned(templateHooked,
+                            psmAligned, scanPSMMap);
+                    if (partMutatedAAsOnTemplate != null) {
+                        for (List<Integer> posList : partMutatedAAsOnTemplate.keySet()) {
+                            mutationsOnTemplate.put(posList, partMutatedAAsOnTemplate.get(posList));
+                        }
+                    }
+                }
+            }
+        }
+
+        for (Map.Entry entry : mutationsOnTemplate.entrySet()) {
+            List<Integer> posList = (List<Integer>) entry.getKey();
+            List<String> patternList = (List<String>) entry.getValue();
+            for (int pos : posList) {
+                System.out.print(pos + " ");
+            }
+            System.out.println();
+            for (String pattern : patternList) {
+                System.out.println(pattern);
+            }
+
+        }
+
+
+    }
 }
+=======
+}
+>>>>>>> 5cf1bc6f65a5ff5a95b7de4a35d8b74ea02aa273

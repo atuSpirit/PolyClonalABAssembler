@@ -39,7 +39,7 @@ public class PSMAligned extends PSM {
 
     private char[] convertToAA(String peptide) {
         //Remove all PTM
-        peptide = peptide.replaceAll("\\(\\S(\\d)+.(\\d)+\\)", "");
+        peptide = peptide.replaceAll("\\(\\S(\\d)*.(\\d)+\\)", "");
 
         //Remove all ins|del|sub
         peptide = peptide.replaceAll("\\(sub \\S\\)", "");
@@ -63,7 +63,7 @@ public class PSMAligned extends PSM {
             this.positionOfVariations = new ArrayList<>();
 
             //Remove the PTM
-            peptide = peptide.replaceAll("\\(\\S(\\d)+.(\\d)+\\)", "");
+            peptide = peptide.replaceAll("\\(\\S(\\d)*.(\\d)+\\)", "");
 
             //Put the position where (sub *), (ins), (del) to positionOfVariations List.
             int i = 0;
@@ -127,7 +127,7 @@ public class PSMAligned extends PSM {
         }
         String str = "Scan: " + scan + " Peptide: " + peptide +
                 " char[]: " + new String(AAs) +
-                "position of variations: " + posOfVar +
+                " position of variations: " + posOfVar +
                 " start: " + start + " end: " + end;
         return str;
     }

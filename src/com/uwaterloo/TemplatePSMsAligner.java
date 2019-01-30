@@ -7,7 +7,7 @@ import java.util.List;
 
 public class TemplatePSMsAligner {
     /* Each template contain a PSMAlignList storing psms mapped to it. */
-    ArrayList<LinkedList<PSMAligned>> listOfPSMAlignedList;
+    ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList;
     /**
      * Building the list of PSM aligned.
      * According to the psm's peptide sequence, find its mapping position
@@ -22,7 +22,7 @@ public class TemplatePSMsAligner {
 
         listOfPSMAlignedList = new ArrayList<>();
         for (int i = 0; i < templateNum; i++) {
-            LinkedList<PSMAligned> psmAlignedList = new LinkedList<>();
+            ArrayList<PSMAligned> psmAlignedList = new ArrayList<>();
             listOfPSMAlignedList.add(psmAlignedList);
         }
 
@@ -67,7 +67,7 @@ public class TemplatePSMsAligner {
 
             /* For each position the peptide mapped, add the scan to its scanList */
             int end = psmAligned.getEnd();
-            ArrayList<LinkedList<String>> mappedScanList = templateHooked.getMappedScanList();
+            ArrayList<ArrayList<String>> mappedScanList = templateHooked.getMappedScanList();
             for (int i = start; i < end; i++) {
                 mappedScanList.get(i).add(scan);
             }
@@ -91,7 +91,7 @@ public class TemplatePSMsAligner {
         return templateHookedList;
     }
 
-    public ArrayList<LinkedList<PSMAligned>> getPsmAlignedList() {
+    public ArrayList<ArrayList<PSMAligned>> getPsmAlignedList() {
         return listOfPSMAlignedList;
     }
 }

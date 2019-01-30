@@ -4,9 +4,9 @@ import java.util.ArrayList;
 
 /* Temorary no use */
 public class TemplateHooked extends Template {
-    ArrayList<LinkedList<String>> mappedScanList;   //The list of scans mapped to each position of the template.
-    ArrayList<LinkedList<PSMAligned>> dbList;
-    ArrayList<LinkedList<PSMAligned>> spiderList;
+    ArrayList<ArrayList<String>> mappedScanList;   //The list of scans mapped to each position of the template.
+    ArrayList<ArrayList<PSMAligned>> dbList;
+    ArrayList<ArrayList<PSMAligned>> spiderList;
     //ToDo  add arrayOfDenovoAligned.
 
     public TemplateHooked(Template template) {
@@ -23,26 +23,26 @@ public class TemplateHooked extends Template {
      */
     private void initializeAlignList(int size) {
         for (int i = 0; i < size; i++) {
-            LinkedList<String> scanList = new LinkedList<>();
+            ArrayList<String> scanList = new ArrayList<>();
             this.mappedScanList.add(scanList);
 
-            LinkedList<PSMAligned> dbLinkedList = new LinkedList<>();
-            this.dbList.add(dbLinkedList);
+            ArrayList<PSMAligned> dbList = new ArrayList<>();
+            this.dbList.add(dbList);
 
-            LinkedList<PSMAligned> spiderLinkedList = new LinkedList<>();
-            this.spiderList.add(spiderLinkedList);
+            ArrayList<PSMAligned> spiderList = new ArrayList<>();
+            this.spiderList.add(spiderList);
         }
     }
 
-    public ArrayList<LinkedList<PSMAligned>> getDbList() {
+    public ArrayList<ArrayList<PSMAligned>> getDbList() {
         return this.dbList;
     }
 
-    public ArrayList<LinkedList<PSMAligned>> getSpiderList() {
+    public ArrayList<ArrayList<PSMAligned>> getSpiderList() {
         return this.spiderList;
     }
 
-    public ArrayList<LinkedList<String>> getMappedScanList() {
+    public ArrayList<ArrayList<String>> getMappedScanList() {
         return this.mappedScanList;
     }
 

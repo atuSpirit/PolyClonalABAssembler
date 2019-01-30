@@ -44,7 +44,7 @@ public class Assembler {
         }
         */
 
-        ArrayList<LinkedList<PSMAligned>> listOfPSMAlignedList = aligner.getPsmAlignedList();
+        ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList = aligner.getPsmAlignedList();
         MapScanPSMAligned scanPSMMapper = new MapScanPSMAligned(listOfPSMAlignedList.get(templateId));
         HashMap<String, PSMAligned> scanPSMMap = scanPSMMapper.getScanPSMMap();
 
