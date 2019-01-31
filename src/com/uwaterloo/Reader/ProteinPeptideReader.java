@@ -89,7 +89,13 @@ public class ProteinPeptideReader extends CSVReader {
             if (m.find()) {
                 peptide = m.group(2);
             } else {
-                System.err.println(peptide + " does not match.");
+                p = Pattern.compile("(.+)(\\.\\w)$");
+                m = p.matcher(peptide);
+                if (m.find()) {
+                    peptide = m.group(1);
+                } else {
+                    System.err.println(peptide + " does not match.");
+                }
             }
         }
         return peptide;

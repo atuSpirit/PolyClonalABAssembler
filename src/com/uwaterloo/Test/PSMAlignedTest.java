@@ -1,8 +1,7 @@
 package com.uwaterloo.Test;
 
-import com.uwaterloo.PSM;
+
 import com.uwaterloo.PSMAligned;
-import com.uwaterloo.TMapPosition;
 import org.junit.Test;
 
 import java.util.ArrayList;
