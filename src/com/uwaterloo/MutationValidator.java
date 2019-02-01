@@ -85,6 +85,7 @@ public class MutationValidator {
                 psmAligned, scanPSMMap);
         //printExtractedPSMs(extractedPSMsMap);
         String templatePattern = extractedScanAAPatternMap.get("Template");
+        extractedScanAAPatternMap.remove("Template");
         HashMap<String, Integer> patternFreqTable = countPatternFreqTable(extractedScanAAPatternMap);
         List<String> significantMutatedPatternsOnTemplate = getSignificantMutatedList(patternFreqTable,
                 threshold);
@@ -264,6 +265,7 @@ public class MutationValidator {
                 scanAAPatternMap.put(scan, AAPattern);
                 //DEBUG
                 if (AAPattern.equals("LNS")) {
+                    //Got result, this happens only on template
                     System.out.println("Debug: LNS scan: " + scan);
                 }
             }

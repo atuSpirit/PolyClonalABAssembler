@@ -53,7 +53,7 @@ public class Assembler {
         printMutationsOnTemplate(mutationsOnTemplateList);
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder(mutationsOnTemplateList);
-        templateCandidateBuilder.buildCandidateTemplate();
+        templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked);
 
     }
 
