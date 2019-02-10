@@ -263,11 +263,19 @@ public class MutationValidator {
             //If correspondingPSMAligned has shorter posList, null will be returned.
             if (AAPattern != null) {
                 scanAAPatternMap.put(scan, AAPattern);
-                //DEBUG
-                if (AAPattern.equals("LNS")) {
-                    //Got result, this happens only on template
-                    System.out.println("Debug: LNS scan: " + scan);
+
+                /* //DEBUG
+                if (scan.equals("F3:9267")) {
+                    System.out.println("Debug: " + AAPattern + " Peptide: " +
+                    correspondingPsmAligned.getPeptide() + " pos List" + posList.toString());
+
                 }
+
+                if (AAPattern.equals("SY")) {
+                    //Got result, this happens only on template
+                    System.out.println("Debug: SY scan: " + scan);
+                }
+                */
             }
 
         }
@@ -300,7 +308,9 @@ public class MutationValidator {
      * (ins) won't cause problem.  (del) will cause problem, need to rethink.
       * If this psmAligned's peptide does not contains full list of posList,
       * null will be returned. This psmAligned will be considered in another
-      * cycle with less mutationNum.
+      * cycle with less mutationNum. If the size of posList is less than
+      * the variationNum of psmAligned, its pattern should not be extracted,
+      * because it will be the subset of longer mutation pattern already extracted.
      * @param psmAligned
      * @param posList
      * @param templateAAPattern
@@ -308,6 +318,9 @@ public class MutationValidator {
      */
     private String extractAAPattern(PSMAligned psmAligned, List<Integer> posList,
                                       char[] templateAAPattern) {
+        if ((psmAligned.getPositionOfVariations()) != null && (posList.size() < psmAligned.getPositionOfVariations().size())) {
+            return null;
+        }
         int start = psmAligned.getStart();
         int end = psmAligned.getEnd() - start;
 

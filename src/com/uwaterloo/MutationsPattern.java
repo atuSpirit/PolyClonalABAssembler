@@ -25,6 +25,18 @@ public class MutationsPattern {
         return freq;
     }
 
+    public void setPosList(List<Integer> posList) {
+        this.posList = posList;
+    }
+
+    public void setAAs(String AAs) {
+        this.AAs = AAs;
+    }
+
+    public void setFreq(int freq) {
+        this.freq = freq;
+    }
+
     @Override
     public String toString() {
         return AAs + " at " +  posList.toString() + " freq: " + freq;

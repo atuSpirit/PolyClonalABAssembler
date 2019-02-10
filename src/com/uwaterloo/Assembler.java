@@ -29,28 +29,26 @@ public class Assembler {
 
         TemplatePSMsAligner aligner = new TemplatePSMsAligner();
         List<TemplateHooked> templateHookedList = aligner.alignPSMstoTemplate(psmList, templateList, peptideProteinMap);
-
-
-        int templateId = 0;
-        /* Test one first template */
-        TemplateHooked aTemplateHooked = templateHookedList.get(templateId);
-        /*
-        char[] seq = aTemplateHooked.getSeq();
-        int size = seq.length;
-        for (int i = 0; i < size; i++) {
-            System.out.println(seq[i] + "\t" + aTemplateHooked.getDbList().get(i).size() + "\t" +
-                    aTemplateHooked.getSpiderList().get(i).size() + "\t" +
-                    aTemplateHooked.getMappedScanList().get(i).size());
-        }
-        */
-
         ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList = aligner.getPsmAlignedList();
+
+        for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
+            System.out.println("Template " + templateId);
+            TemplateHooked aTemplateHooked = templateHookedList.get(templateId);
+            findCandidateForOneTemplate(aTemplateHooked, templateId, listOfPSMAlignedList);
+        }
+
+
+    }
+
+    private void findCandidateForOneTemplate(TemplateHooked aTemplateHooked, int templateId,
+                                             ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList) {
+
         MapScanPSMAligned scanPSMMapper = new MapScanPSMAligned(listOfPSMAlignedList.get(templateId));
         HashMap<String, PSMAligned> scanPSMMap = scanPSMMapper.getScanPSMMap();
 
         MutationValidator validator = new MutationValidator();
         List<HashMap<List<Integer>, List<String>>> mutationsOnTemplateList = validator.validateMutations(aTemplateHooked, scanPSMMap);
-        printMutationsOnTemplate(mutationsOnTemplateList);
+        //  printMutationsOnTemplate(mutationsOnTemplateList);
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder(mutationsOnTemplateList);
         templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked);
@@ -74,30 +72,6 @@ public class Assembler {
             }
         }
 
-    }
-
-    /* Wrong one */
-    private List<TreeMap<Integer, List<String>>> sortMutationsByPosition(List<HashMap<List<Integer>, List<String>>> mutationsOnTemplateList) {
-        List<TreeMap<Integer, List<String>>> mutationsSortByPosList = new ArrayList<>();
-
-        for (int i = 0; i < mutationsOnTemplateList.size(); i++) {
-            HashMap<List<Integer>, List<String>> mutationsOnTemplate = mutationsOnTemplateList.get(i);
-            TreeMap<Integer, List<String>> mutationsSortByPos = new TreeMap<>();
-            for (Map.Entry entry : mutationsOnTemplate.entrySet()) {
-                List<Integer> posList = (List<Integer>) entry.getKey();
-                List<String> patternList = (List<String>) entry.getValue();
-                for (int j = 0; j < posList.size(); j++) {
-                    int key = posList.get(j);
-                    if (!mutationsSortByPos.containsKey(key)) {
-                        mutationsSortByPos.put(key, new ArrayList<>(patternList));
-                    } else {
-                        mutationsSortByPos.get(key).addAll(patternList);
-                    }
-                }
-            }
-            //mutationsOnTemplateList.add(mutationsSortByPos);
-        }
-        return mutationsSortByPosList;
     }
 
 
