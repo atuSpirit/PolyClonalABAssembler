@@ -29,7 +29,7 @@ public class MutationValidator {
         return maxMutationNum;
     }
 
-    /* Extract positions where containing psm with mutationNum mutations */
+    /* Extract positions where containing psm with mutationNum of mutations */
     public ArrayList<Integer> extractPositionWithMutationNum(TemplateHooked templateHooked, int mutationNum) {
         ArrayList<Integer> posWithMutationNumList = new ArrayList<>();
         ArrayList<ArrayList<PSMAligned>> listOfSpiderList = templateHooked.getSpiderList();

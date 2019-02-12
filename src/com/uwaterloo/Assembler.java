@@ -13,13 +13,13 @@ public class Assembler {
 
     public void process() {
         String dir = "D:\\Hao\\data\\for_analysis\\polyclonalAssemblerData\\";
-        dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
+        //dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
 
         String templateFasta = dir + "Nuno.2016.heavy.template.fasta";
-        templateFasta = dir + "ab19001.template_top8.fasta";
+        //templateFasta = dir + "ab19001.template_top8.fasta";
         TemplatesLoader loader = new TemplatesLoader();
         List<Template> templateList = loader.loadTemplateFasta(templateFasta);
 
@@ -31,16 +31,25 @@ public class Assembler {
         List<TemplateHooked> templateHookedList = aligner.alignPSMstoTemplate(psmList, templateList, peptideProteinMap);
         ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList = aligner.getPsmAlignedList();
 
+        List<char[]> candidateTemplates = new ArrayList<>();
         for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
             System.out.println("Template " + templateId);
             TemplateHooked aTemplateHooked = templateHookedList.get(templateId);
-            findCandidateForOneTemplate(aTemplateHooked, templateId, listOfPSMAlignedList);
+            List<char[]> top2CandidateTemplates = findCandidateForOneTemplate(aTemplateHooked, templateId, listOfPSMAlignedList);
+           // candidateTemplates.add(aTemplateHooked.getSeq()); //Add the template sequence in
+            candidateTemplates.addAll(top2CandidateTemplates);
         }
 
 
+        for (int index = 0; index < candidateTemplates.size(); index++) {
+            System.out.println(">" + index);
+            System.out.println(new String(candidateTemplates.get(index)));
+
+        }
+
     }
 
-    private void findCandidateForOneTemplate(TemplateHooked aTemplateHooked, int templateId,
+    private List<char[]> findCandidateForOneTemplate(TemplateHooked aTemplateHooked, int templateId,
                                              ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList) {
 
         MapScanPSMAligned scanPSMMapper = new MapScanPSMAligned(listOfPSMAlignedList.get(templateId));
@@ -51,7 +60,9 @@ public class Assembler {
         //  printMutationsOnTemplate(mutationsOnTemplateList);
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder(mutationsOnTemplateList);
-        templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked);
+        List<char[]> top2CandidateTemplates = templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked);
+
+        return top2CandidateTemplates;
 
     }
 

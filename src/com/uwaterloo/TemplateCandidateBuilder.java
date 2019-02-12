@@ -108,8 +108,8 @@ public class TemplateCandidateBuilder {
         }
     }
 
-    private TreeMap<Integer, List<MutationsPattern>> assembleMutationPatterns(List<Integer> posArray,
-                                                                              TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
+    private List<MutationsPattern> assembleMutationPatterns(List<Integer> posArray,
+                                                            TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
         List<MutationsPattern> mutationContigList = new ArrayList<>();
 
         int size = posArray.size();
@@ -146,23 +146,80 @@ public class TemplateCandidateBuilder {
             }
         }
 
+        //DEBUG
         for (MutationsPattern mutationsPattern : mutationContigList) {
             System.out.println(mutationsPattern.toString());
-
         }
-        return null;
+        return mutationContigList;
 
     }
 
-    /* Given a list of patterns with same start but different pattern or different length,
-        Return a list of merged pattern
+    /**
+     * According to the assembled mutation Contigs list, attach the indexes of mutationContigs covering pos to pos.
+     * @param mutationContigList The list of assembled mutation contigs
+     * @return a map of <pos, List<index of contigs covering the pos>
      */
-    private void processPatternsStartingAtPos(List<MutationsPattern> mutationsPatterns,
-                                              TemplateHooked templateHooked,
-                                              List<Integer> posList, int startIndex) {
-        List<MutationsPattern> processedMutationPatterns = new ArrayList<>();
+    private TreeMap<Integer, Set<Integer>> buildPosAssembledMutationsMap(List<MutationsPattern> mutationContigList) {
+        /* Attach the index of mutationContigs to each position the pattern covers */
+        TreeMap<Integer, Set<Integer>> posMutationsMap = new TreeMap<>();
+        for (int index = 0; index < mutationContigList.size(); index++) {
+            List<Integer> posList = mutationContigList.get(index).getPosList();
+            for (int pos : posList) {
+                if (posMutationsMap.containsKey(pos)) {
+                    posMutationsMap.get(pos).add(index);
+                } else {
+                    Set<Integer> indexSet = new HashSet<Integer>();
+                    indexSet.add(index);
+                    posMutationsMap.put(pos, indexSet);
+                }
+            }
+        }
+
+        return posMutationsMap;
+    }
+
+    /**
+     * Pick the mutation contigs with highest frequency on each position. After adding the pattern with
+     * maximum freq to a list of contigs with highest freq, remove the pattern from posMutationMap. In this way,
+     * second call of this function will result a list of contigs with second highest freq.
+     * @param mutationContigList
+     * @param posMutationsMap
+     * @return a list of mutationContig whose freq are the most in the position.
+     *          The mutationContig with max freq is removed from posMutations Map.
+     */
+    private List<MutationsPattern> pickMuationContigsWithTopFreq(List<MutationsPattern> mutationContigList,
+                                                                 TreeMap<Integer, Set<Integer>> posMutationsMap) {
+        List<MutationsPattern> topMutationContigList = new ArrayList<>();
+        int preIndex = -1;
+        for (int pos : posMutationsMap.keySet()) {
+            Set<Integer> indexList = posMutationsMap.get(pos);
+            if (indexList.size() == 0) {
+                continue;
+            }
+            int maxIndex = indexOfMaxFreq(indexList, mutationContigList);
+
+            if (maxIndex != preIndex) {
+                topMutationContigList.add(mutationContigList.get(maxIndex));
+                preIndex = maxIndex;
+            }
+            posMutationsMap.get(pos).remove(maxIndex);
+        }
+
+        return topMutationContigList;
+    }
 
 
+    private int indexOfMaxFreq(Set<Integer> indexList, List<MutationsPattern> mutationCongigList) {
+        int maxIndex = 0;
+        int maxFreq = 0;
+        for (int i : indexList) {
+            int freq = mutationCongigList.get(i).getFreq();
+            if (freq > maxFreq) {
+                maxIndex = i;
+                maxFreq = freq;
+            }
+        }
+        return maxIndex;
     }
 
     /**
@@ -242,14 +299,15 @@ public class TemplateCandidateBuilder {
         if (prePosList.get(prePosList.size()  - 1) < succPosList.get(0)) {
             return -1;
         }
-        int preIndex = -1;
+        int preIndex = 0;
         int succIndex = 0;
+
         while (preIndex < prePosList.size()) {
-            preIndex++;
             //There is a pos in prePosList == the first pos in succPosList
             if (prePosList.get(preIndex) == succPosList.get(succIndex)) {
                 break;
             }
+            preIndex++;
         }
         overLapStart = preIndex;
         while ((preIndex < prePosList.size()) && (succIndex < succPosList.size())) {
@@ -264,23 +322,73 @@ public class TemplateCandidateBuilder {
         return overLapStart;
     }
 
+    /**
+     * Generate new template sequence according to old template sequence and mutated patterns.
+     * @param templateHooked
+     * @param topMutationContigList
+     * @return A new template sequence
+     */
+    private char[] getCandidateTemplate(TemplateHooked templateHooked, List<MutationsPattern> topMutationContigList) {
+        char[] candidateTemplate = templateHooked.getSeq().clone();
 
+        for (MutationsPattern mutationsPattern: topMutationContigList) {
+            List<Integer> posList = mutationsPattern.getPosList();
+            String pattern = mutationsPattern.getAAs();
+            //DEBUG
+            System.out.println("Debug: " + pattern + " " + posList.toString() + " " + mutationsPattern.getFreq());
 
-    public void buildCandidateTemplate(TemplateHooked templateHooked) {
+            for (int i = 0; i < posList.size(); i++) {
+                candidateTemplate[posList.get(i)] = pattern.charAt(i);
+            }
+        }
+        System.out.println(new String(candidateTemplate));
+        return candidateTemplate;
+    }
+
+    private List<MutationsPattern> filterMutationContigs(List<MutationsPattern> assembledMutationContigs, int confThresh) {
+        List<MutationsPattern> filteredMutationContigs = new ArrayList<>();
+        for (MutationsPattern mutationsPattern : assembledMutationContigs) {
+            if (mutationsPattern.getFreq() >= confThresh) {
+                filteredMutationContigs.add(mutationsPattern);
+            }
+        }
+        return filteredMutationContigs;
+    }
+
+    public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked) {
         List<Integer> posArray = getPosSet();
         System.out.println(posArray.toString());
 
         TreeMap<Integer, List<MutationsPattern>> mutationSorted = sortMutationsAccordingPos();
 
-        System.out.println("Process all patterns consecutive according to posArray");
+        System.out.println("Process all patterns consecutive according to posArray...");
         TreeMap<Integer, List<MutationsPattern>> processedMutations = makePatternsConsecutive(mutationSorted, posArray, templateHooked);
         printMutationsAlongPos(mutationSorted);
 
-        System.out.println("Assembling mutations patterns");
-        TreeMap<Integer, List<MutationsPattern>> assembledMutations = assembleMutationPatterns(posArray, processedMutations);
+        System.out.println("Assembling mutations patterns...");
+        List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, processedMutations);
 
+        int confThresh = 3; //Currently use 3 as minimal frequency of the pattern to be considered.
+        List<MutationsPattern> filteredMutationContigs = filterMutationContigs(assembledMutationContigs, confThresh);
+        TreeMap<Integer, Set<Integer>> posMutationsMap = buildPosAssembledMutationsMap(filteredMutationContigs);
 
-        //makePatternsConsecutive(templateHooked, posArray);
+        /* Get the top freq to form template 1, then second top freq to form template 2.  It might contain problem that
+            the second one is a mosiac one. In fact, the second one should have part of first one.  Need more judgement
+            whether the frequency in one template are similar.
+         */
+        System.out.println("Generating candidate templates...");
+        List<MutationsPattern> topMutationContigList1 = pickMuationContigsWithTopFreq(assembledMutationContigs, posMutationsMap);
+        char[] candidateTemplate1 = getCandidateTemplate(templateHooked, topMutationContigList1);
+
+        List<MutationsPattern> topMutationContigList2 = pickMuationContigsWithTopFreq(assembledMutationContigs, posMutationsMap);
+        char[] candidateTemplate2 = getCandidateTemplate(templateHooked, topMutationContigList2);
+
+        List<char[]> top2CandidateTemplates = new ArrayList<>();
+        top2CandidateTemplates.add(candidateTemplate1);
+        top2CandidateTemplates.add(candidateTemplate2);
+
+        return top2CandidateTemplates;
+
     }
 
 
