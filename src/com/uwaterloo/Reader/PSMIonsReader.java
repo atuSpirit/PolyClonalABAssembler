@@ -1,13 +1,13 @@
 package com.uwaterloo.Reader;
 
-import org.junit.Test;
-import static org.junit.Assert.*;
-
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
+
+import org.junit.Test;
+import static org.junit.Assert.*;
 
 public class PSMIonsReader extends CSVReader {
     HashMap<String, Integer> fieldIndexMap;
@@ -81,7 +81,7 @@ public class PSMIonsReader extends CSVReader {
                 if (zeroStart != -1) {
                     zeroEnd = i;
                     short score = (short) (100 / (zeroEnd - zeroStart + 1));
-                    for (int j = zeroStart; j < zeroEnd; j++) {
+                    for (int j = zeroStart; j <= zeroEnd; j++) {
                         ionsScores[j] = score;
                     }
                     zeroStart = -1;
@@ -97,7 +97,7 @@ public class PSMIonsReader extends CSVReader {
         if (zeroStart != -1) {
             zeroEnd = ions.length - 1;
             short score = (short) (100 / (zeroEnd - zeroStart + 1));
-            for (int j = zeroStart; j < zeroEnd; j++) {
+            for (int j = zeroStart; j <= zeroEnd; j++) {
                 ionsScores[j] = score;
             }
         }
@@ -110,6 +110,21 @@ public class PSMIonsReader extends CSVReader {
 
         short[] ionsScore = computeIonsScoresFromIonPos(ions);
         short[] trueScore = new short[]{50, 50, 100, 100, 33, 33, 33};
+        assertArrayEquals(trueScore, ionsScore);
+
+        ions = new short[]{0,0,0};
+        trueScore = new short[]{33,33,33};
+        ionsScore = computeIonsScoresFromIonPos(ions);
+        assertArrayEquals(trueScore, ionsScore);
+
+        ions = new short[]{1,1,1,1};
+        trueScore = new short[]{100, 100, 100, 100};
+        ionsScore = computeIonsScoresFromIonPos(ions);
+        assertArrayEquals(trueScore, ionsScore);
+
+        ions = new short[]{0,1,1,0,1,0,0};
+        trueScore = new short[]{50, 50, 100, 50, 50, 50, 50};
+        ionsScore = computeIonsScoresFromIonPos(ions);
         assertArrayEquals(trueScore, ionsScore);
     }
 
