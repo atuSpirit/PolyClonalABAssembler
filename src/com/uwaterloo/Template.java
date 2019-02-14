@@ -1,16 +1,22 @@
 package com.uwaterloo;
 
+import java.util.List;
+
 public class Template {
     int templateId;
     String templateAccession;
     char[] seq;
-    char[] modifiedSeq;
+    List<char[]> modifiedTemplates;
 
 
     public Template(int templateId, String templateAccession, char[] seq) {
         this.templateId = templateId;
         this.templateAccession = templateAccession;
         this.seq = seq;
+    }
+
+    public void setModifiedTemplates(List<char[]> candidateTemplates) {
+        this.modifiedTemplates = candidateTemplates;
     }
 
     public int getTemplateId() {
@@ -25,7 +31,7 @@ public class Template {
         return seq;
     }
 
-    public char[] getModifiedSeq() {
-        return modifiedSeq;
+    public List<char[]> getModifiedSeq() {
+        return modifiedTemplates;
     }
 }

@@ -426,6 +426,10 @@ public class MutationValidator {
                 //AAComb[i] = '*';
             } else {
                 AAComb[i] = psmAligned.getAAs()[pos];
+                //If this scan does not have ions information, return null. It is probably due to PEAKS bug.
+                if (psmAligned.getIonScores() == null) {
+                    return null;
+                }
                 ionScoreSum += psmAligned.getIonScores()[pos];
             }
 

@@ -373,10 +373,10 @@ public class TemplateCandidateBuilder {
             whether the frequency in one template are similar.
          */
         System.out.println("Generating candidate templates...");
-        List<MutationsPattern> topMutationContigList1 = pickMuationContigsWithTopFreq(assembledMutationContigs, posMutationsMap);
+        List<MutationsPattern> topMutationContigList1 = pickMuationContigsWithTopFreq(filteredMutationContigs, posMutationsMap);
         char[] candidateTemplate1 = getCandidateTemplate(templateHooked, topMutationContigList1);
 
-        List<MutationsPattern> topMutationContigList2 = pickMuationContigsWithTopFreq(assembledMutationContigs, posMutationsMap);
+        List<MutationsPattern> topMutationContigList2 = pickMuationContigsWithTopFreq(filteredMutationContigs, posMutationsMap);
         char[] candidateTemplate2 = getCandidateTemplate(templateHooked, topMutationContigList2);
 
         List<char[]> top2CandidateTemplates = new ArrayList<>();

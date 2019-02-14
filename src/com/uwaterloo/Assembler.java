@@ -15,7 +15,7 @@ public class Assembler {
     public void process() {
         String dir = "D:\\Hao\\data\\for_analysis\\polyclonalAssemblerData\\";
         dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
-        //dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_13\\";
+        dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_13\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -29,7 +29,7 @@ public class Assembler {
 
         String templateFasta = dir + "Nuno.2016.heavy.template.fasta";
         templateFasta = dir + "ab19001.template_top8.fasta";
-       // templateFasta = dir + "Waters_mAB.template_top4.fasta";
+        templateFasta = dir + "Waters_mAB.template_top4.fasta";
         TemplatesLoader loader = new TemplatesLoader();
         List<Template> templateList = loader.loadTemplateFasta(templateFasta);
 
@@ -42,20 +42,22 @@ public class Assembler {
         List<TemplateHooked> templateHookedList = aligner.alignPSMstoTemplate(psmList, templateList, peptideProteinMap);
         ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList = aligner.getPsmAlignedList();
 
-        List<char[]> candidateTemplates = new ArrayList<>();
+
         for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
             System.out.println("Template " + templateId);
             TemplateHooked aTemplateHooked = templateHookedList.get(templateId);
             List<char[]> top2CandidateTemplates = findCandidateForOneTemplate(aTemplateHooked, templateId, listOfPSMAlignedList);
-           // candidateTemplates.add(aTemplateHooked.getSeq()); //Add the template sequence in
-            candidateTemplates.addAll(top2CandidateTemplates);
+            templateHookedList.get(templateId).setModifiedTemplates(top2CandidateTemplates);
         }
 
 
-        for (int index = 0; index < candidateTemplates.size(); index++) {
-            System.out.println(">" + index);
-            System.out.println(new String(candidateTemplates.get(index)));
-
+        for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
+            List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
+            String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
+            for (int i = 0; i < candidateTemplates.size(); i++) {
+                System.out.println(">can" + (i + 1) + "_" + templateAccession);
+                System.out.println(new String(candidateTemplates.get(i)));
+            }
         }
 
     }
