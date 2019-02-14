@@ -1,5 +1,6 @@
 package com.uwaterloo;
 
+import com.uwaterloo.Reader.PSMIonsReader;
 import com.uwaterloo.Reader.PSMReader;
 import com.uwaterloo.Reader.ProteinPeptideReader;
 import com.uwaterloo.Reader.TemplatesLoader;
@@ -13,19 +14,29 @@ public class Assembler {
 
     public void process() {
         String dir = "D:\\Hao\\data\\for_analysis\\polyclonalAssemblerData\\";
-        //dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
+        dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
+        //dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_13\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
 
+        String psmIonsFile = dir + "PSM ions.csv";
+        PSMIonsReader ionsReader = new PSMIonsReader();
+        HashMap<String, short[]> scanIonPosesMap = ionsReader.readPSMIonsFile(psmIonsFile);
+        HashMap<String, short[]> scanIonScoresMap = ionsReader.setIonsScore(scanIonPosesMap);
+        setIonScoresForPSMList(psmList, scanIonScoresMap);
+
+
         String templateFasta = dir + "Nuno.2016.heavy.template.fasta";
-        //templateFasta = dir + "ab19001.template_top8.fasta";
+        templateFasta = dir + "ab19001.template_top8.fasta";
+       // templateFasta = dir + "Waters_mAB.template_top4.fasta";
         TemplatesLoader loader = new TemplatesLoader();
         List<Template> templateList = loader.loadTemplateFasta(templateFasta);
 
         ProteinPeptideReader ppReader = new ProteinPeptideReader(templateList);
         String proteinPeptideFile = dir + "protein-peptides.csv";
         HashMap<String, List<TMapPosition>> peptideProteinMap = ppReader.readProteinPeptideFile(proteinPeptideFile);
+
 
         TemplatePSMsAligner aligner = new TemplatePSMsAligner();
         List<TemplateHooked> templateHookedList = aligner.alignPSMstoTemplate(psmList, templateList, peptideProteinMap);
@@ -49,6 +60,22 @@ public class Assembler {
 
     }
 
+    /**
+     * For each psm in psmList, try to fill in the fragment ion scores.
+     * @param psmList
+     * @param scanIonScoresMap
+     */
+    private void setIonScoresForPSMList(List<PSM> psmList, HashMap<String,short[]> scanIonScoresMap) {
+        for (int i = 0; i < psmList.size(); i++) {
+            String scan = psmList.get(i).getScan();
+            if (scanIonScoresMap.containsKey(scan)) {
+                psmList.get(i).setIonScores(scanIonScoresMap.get(scan));
+            } else {
+                System.err.println("scan " + scan + " does not contain fragment ions information!");
+            }
+        }
+    }
+
     private List<char[]> findCandidateForOneTemplate(TemplateHooked aTemplateHooked, int templateId,
                                              ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList) {
 
@@ -56,7 +83,7 @@ public class Assembler {
         HashMap<String, PSMAligned> scanPSMMap = scanPSMMapper.getScanPSMMap();
 
         MutationValidator validator = new MutationValidator();
-        List<HashMap<List<Integer>, List<String>>> mutationsOnTemplateList = validator.validateMutations(aTemplateHooked, scanPSMMap);
+        List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsOnTemplateList = validator.validateMutations(aTemplateHooked, scanPSMMap);
         //  printMutationsOnTemplate(mutationsOnTemplateList);
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder(mutationsOnTemplateList);

@@ -1,9 +1,5 @@
 package com.uwaterloo;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.ArrayList;
-
 /**
  * The class to store a peptide spectrum match.
  * It could be used to store db result, spider result
@@ -12,6 +8,10 @@ import java.util.ArrayList;
 public class PSM {
     String scan;
     String peptide;
+    /* The ion score of each AA. If an AA contain both ions around it, it will have 100.
+        If it belongs to a seg of length n, then each AA will have int(100 / n) score.
+     */
+    short[] ionScores;
 
     public PSM(String scan, String peptide) {
         this.scan = scan;
@@ -27,5 +27,12 @@ public class PSM {
         return peptide;
     }
 
+    public short[] getIonScores() {
+        return ionScores;
+    }
+
+    public void setIonScores(short[] ionScores) {
+        this.ionScores = ionScores;
+    }
 
 }

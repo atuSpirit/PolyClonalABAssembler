@@ -3,9 +3,9 @@ package com.uwaterloo;
 import java.util.*;
 
 public class TemplateCandidateBuilder {
-    List<HashMap<List<Integer>, List<String>>> mutationsList;
+    List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsList;
 
-    public TemplateCandidateBuilder(List<HashMap<List<Integer>, List<String>>> mutationsList) {
+    public TemplateCandidateBuilder(List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsList) {
         this.mutationsList = mutationsList;
     }
 
@@ -13,7 +13,7 @@ public class TemplateCandidateBuilder {
     private List<Integer> getPosSet() {
         Set<Integer> posSet = new HashSet<>();
         for (int i = 0; i < mutationsList.size(); i++) {
-            HashMap<List<Integer>, List<String>> mutations = mutationsList.get(i);
+            HashMap<List<Integer>, List<MutationsPattern>> mutations = mutationsList.get(i);
             for (List<Integer> posList : mutations.keySet()) {
                 for (int pos : posList) {
                     posSet.add(pos);
@@ -29,19 +29,14 @@ public class TemplateCandidateBuilder {
     private TreeMap<Integer, List<MutationsPattern>> sortMutationsAccordingPos() {
         TreeMap<Integer, List<MutationsPattern>> mutationsSorted = new TreeMap<>();
         for (int i = 0; i < mutationsList.size(); i++) {
-            HashMap<List<Integer>, List<String>> mutations = mutationsList.get(i);
+            HashMap<List<Integer>, List<MutationsPattern>> mutations = mutationsList.get(i);
             for (List<Integer> posList : mutations.keySet()) {
-                List<String> patterns = mutations.get(posList);
+                List<MutationsPattern> patternList = mutations.get(posList);
                 int pos = posList.get(0);
-                for (String pattern : patterns) {
-                    String[] items = pattern.split("_");
-                    MutationsPattern mutationsPattern = new MutationsPattern(posList, items[0],
-                            Integer.valueOf(items[1]));
-                    if (!mutationsSorted.containsKey(pos)) {
-                        List<MutationsPattern> newPatternList = new ArrayList<>();
-                        mutationsSorted.put(pos, newPatternList);
-                    }
-                    mutationsSorted.get(pos).add(mutationsPattern);
+                if (!mutationsSorted.containsKey(pos)) {
+                    mutationsSorted.put(pos, patternList);
+                } else {
+                    mutationsSorted.get(pos).addAll(patternList);
                 }
             }
         }
@@ -82,7 +77,8 @@ public class TemplateCandidateBuilder {
                     posListIndex++;
                 }
 
-                MutationsPattern newMutationPattern = new MutationsPattern(newSubPosList, pattern, mutationsPattern.getFreq());
+                MutationsPattern newMutationPattern = new MutationsPattern(newSubPosList, pattern,
+                        mutationsPattern.getFreq(), mutationsPattern.getScore());
                 processedMutationPatterns.add(newMutationPattern);
 
             }

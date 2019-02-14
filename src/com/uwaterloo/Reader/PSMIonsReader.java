@@ -34,13 +34,14 @@ public class PSMIonsReader extends CSVReader {
                 String[] fields = line.split(",");
 
                 String scan = fields[fieldIndexMap.get("scan")];
-                String peptide = fields[fieldIndexMap.get("Peptide")];
+                int length = Integer.valueOf(fields[fieldIndexMap.get("Length")]);
                 int pos = Integer.valueOf(fields[fieldIndexMap.get("pos")]) - 1;    //starting from zero
                 if (scanIonsMap.containsKey(scan)) {
                     scanIonsMap.get(scan)[pos] = 1;
                 } else {
-                    short[] poses = new short[peptide.length()];
+                    short[] poses = new short[length];
                     poses[pos] = 1;
+                    scanIonsMap.put(scan, poses);
                 }
             }
         } catch (FileNotFoundException e) {
@@ -48,6 +49,7 @@ public class PSMIonsReader extends CSVReader {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         return scanIonsMap;
     }
 
@@ -60,6 +62,9 @@ public class PSMIonsReader extends CSVReader {
         HashMap<String, short[]> scanIonScoresMap = new HashMap<>();
         for (String scan : scanIonsMap.keySet()) {
             short[] ions = scanIonsMap.get(scan);
+            if (scan == "F6:12812") {
+                System.out.println("Debug");
+            }
             short[] ionsScores = computeIonsScoresFromIonPos(ions);
             scanIonScoresMap.put(scan, ionsScores);
         }

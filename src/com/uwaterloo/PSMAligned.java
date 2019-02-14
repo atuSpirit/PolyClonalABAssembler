@@ -15,10 +15,7 @@ public class PSMAligned extends PSM {
         whether there is a fragment peak here. If yes, it should have higher score.
      */
     short[] confScores;
-    /* The ion score of each AA. If an AA contain both ions around it, it will have 100.
-        If it belongs to a seg of length n, then each AA will have int(100 / n) score.
-     */
-    short[] ionScore;
+
     /* The list of positions where variations (substitution, insertion
         deletion) located. If not spider seq, this field is empty.
      */
@@ -29,7 +26,7 @@ public class PSMAligned extends PSM {
      * Computed by connecting PSM and protein-peptide table.
     List<TMapPosition> mapPositionList; */
 
-    public PSMAligned(String scan, String peptide, int templateId, int start, int end) {
+    public PSMAligned(String scan, String peptide, int templateId, int start, int end, short[] ionScores) {
         super(scan, peptide);
 
         this.templateId = templateId;
@@ -38,6 +35,7 @@ public class PSMAligned extends PSM {
         setPositionOfVariations(peptide);
         this.start = start;
         this.end = end;
+        this.ionScores = ionScores;
     }
 
 
@@ -62,9 +60,6 @@ public class PSMAligned extends PSM {
         return confScore;
     }
 
-    public void setIonScore(short[] ionScore) {
-        this.ionScore = ionScore;
-    }
 
     private void setPositionOfVariations(String peptide) {
         if (peptide.contains("sub") || peptide.contains("ins") || peptide.contains("del")) {
@@ -110,10 +105,6 @@ public class PSMAligned extends PSM {
     }
 
 
-    public short[] getIonScore() {
-        return ionScore;
-    }
-
     public List<Integer> getPositionOfVariations() {
         return positionOfVariations;
     }
@@ -135,8 +126,12 @@ public class PSMAligned extends PSM {
     @Override
     public String toString() {
         String posOfVar = "";
-        for (int i : positionOfVariations) {
-            posOfVar += String.valueOf(i) + " ";
+        if (positionOfVariations == null) {
+            posOfVar = "";
+        } else {
+            for (int i : positionOfVariations) {
+                posOfVar += String.valueOf(i) + " ";
+            }
         }
         String str = "Scan: " + scan + " Peptide: " + peptide +
                 " char[]: " + new String(AAs) +
