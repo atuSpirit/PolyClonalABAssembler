@@ -40,10 +40,12 @@ public class MutationValidator {
                 if (psmAligned.getPositionOfVariations() == null) {
                     continue;
                 }
+
                 if (psmAligned.getPositionOfVariations().size() == mutationNum) {
                     posWithMutationNumList.add(pos);
                     break;
                 }
+
             }
         }
         return posWithMutationNumList;
@@ -78,8 +80,6 @@ public class MutationValidator {
      */
     private HashMap<List<Integer>, List<MutationsPattern>> validateOnePSMAligned(TemplateHooked templateHooked, PSMAligned psmAligned,
                                                                  HashMap<String, PSMAligned> scanPSMMap) {
-
-
         /* validate the psms having same list of variation positions */
         HashMap<String, MutationsPattern> extractedScanAAPatternMap = buildScanAAPatternMapForOnePSM(templateHooked,
                 psmAligned, scanPSMMap);
@@ -93,25 +93,44 @@ public class MutationValidator {
                 threshold);
         */
 
+        if (extractedScanAAPatternMap.size() == 0) {
+            return null;
+        }
         /* Use ion score as pattern score and compute significant using baysian probability */
         HashMap<MutationsPattern, Integer> patternScoreTable = countPatternScoreTable(extractedScanAAPatternMap);
+        /* Debug
+        for (MutationsPattern pattern : patternScoreTable.keySet()) {
+            System.out.println(pattern.toString() + " " + patternScoreTable.get(pattern));
+        }
+        */
         List<MutationsPattern> significantMutatedPatternsOnTemplate = getSignificantMutatedList(patternScoreTable);
-
 
         /* Remove scans and PSMAlign containing unsignificant mutation patterns */
         HashSet<MutationsPattern> significantPatterns = new HashSet<>(significantMutatedPatternsOnTemplate);
+        //Remove function will have errors, it should make sure MutationPattern's hash is according to pattern and posList TODO
         removeUnsignificantMutatedScans(templateHooked, psmAligned.getStart(),
                 extractedScanAAPatternMap, significantPatterns);
+
+        /* If only one pattern existing in significantMutatedPatternsOnTemplate and the pattern is the same
+            with template, there is no need to store this pattern
+         */
+        if ((significantMutatedPatternsOnTemplate.size() == 1) &&
+                (significantMutatedPatternsOnTemplate.get(0).getAAs().equals(templatePattern))) {
+            return null;
+        }
+
 
         /* If significant patterns contain one common AA which appears in template,
             this mutated pattern is not of length mutatedNum. return null
             mutatedAAsOnTemplate. The mutated position will be considered in
              later cycle with less mutatedNum.
          */
+        /* The shrink caused some problems later
         boolean isShrinked = checkPatternShrink(templatePattern, significantPatterns);
         if (isShrinked) {
             return null;
         }
+        */
 
         /* The following code are used for method using frequency
         // The frequency of significant patterns are extracted from PatternFreqTable and attached to pattern.
@@ -129,6 +148,7 @@ public class MutationValidator {
 //      }
 */
         HashMap<List<Integer>, List<MutationsPattern>> mutatedAAsOnTemplate = new HashMap<>();
+
         List<Integer> posList = significantMutatedPatternsOnTemplate.get(0).getPosList();
         //The posList in significantMutatedPatternsOnTemplate should be the same.
         mutatedAAsOnTemplate.put(posList, significantMutatedPatternsOnTemplate);
@@ -199,14 +219,21 @@ public class MutationValidator {
 
             if (ratio > threshold) {
                 significantMutatedPattern.add(pattern);
+                //Debug
                 System.out.printf("%s %.4f\n", pattern, score / total);
+            } else {
+                //Debug
+                System.out.printf("unsignificant %s %.4f\n", pattern, score / total);
             }
         }
+
         return significantMutatedPattern;
     }
 
 
 
+    /* There is a bug that the unsignificant pattern might in dblist other than spiderList.
+    * TODO */
     private void removeUnsignificantMutatedScans(TemplateHooked templateHooked, int pos,
                                                  HashMap<String, MutationsPattern> scanAAPatternMap,
                                                  Set<MutationsPattern> significantPatterns) {
@@ -226,9 +253,29 @@ public class MutationValidator {
             if (!unsignificantScanSet.contains(psmAligned.getScan())) {
                 newSpiderList.add(psmAligned);
                 spiderList.set(index, null);
+            } else {
+                //Debug
+                System.out.println("spider remove scan " + psmAligned.getScan());
             }
         }
         templateHooked.getSpiderList().set(pos, newSpiderList);
+
+        /* remove from dbList of position pos on templateHooked */
+        ArrayList<PSMAligned> dbList = templateHooked.getDbList().get(pos);
+        int dbListSize = dbList.size();
+        ArrayList<PSMAligned> newDbList = new ArrayList<>();
+        for (int index = 0; index < dbListSize; index++) {
+            PSMAligned psmAligned = dbList.get(index);
+            if (psmAligned != null && !unsignificantScanSet.contains(psmAligned.getScan())) {
+                newDbList.add(psmAligned);
+                dbList.set(index, null);
+            } else if (psmAligned != null && unsignificantScanSet.contains(psmAligned.getScan())) {
+                //Debug
+                System.out.println("db remove scan " + psmAligned.getScan());
+            }
+        }
+        templateHooked.getDbList().set(pos, newSpiderList);
+
 
         /* remove from scanList of position pos on templateHooked */
         ArrayList<String> scanList = templateHooked.getMappedScanList().get(pos);
@@ -317,6 +364,9 @@ public class MutationValidator {
 
         for (String scan : scanSet) {
             PSMAligned correspondingPsmAligned = scanPSMMap.get(scan);
+            if (scan.equals("F2:11418")) {
+                System.out.println();
+            }
             MutationsPattern AAPattern = extractAAPattern(correspondingPsmAligned, posList, templateAAPattern);
             //If correspondingPSMAligned has shorter posList, null will be returned.
             if (AAPattern != null) {
@@ -520,27 +570,46 @@ public class MutationValidator {
      *      variationPosChecked set.  variationPosChecked set is updated by adding
      *      those new variation positions.
      */
-    private PSMAligned getOnePSMWithNewVariationPosition(Set<Integer> variationPosChecked, List<PSMAligned> psmAlignedList) {
+    private PSMAligned getOnePSMWithNewVariationPosition(Set<String> variationPosChecked, List<PSMAligned> psmAlignedList) {
         /* Pick one psm with new list of variation positions */
-        boolean containNewVaritions = false;
-        PSMAligned psmAlignedChosen = null;
-
         for (PSMAligned psmAligned : psmAlignedList) {
+            int start = psmAligned.getStart();
             List<Integer> posOfVariations = psmAligned.getPositionOfVariations();
-            for (int i : posOfVariations) {
-                if (!variationPosChecked.contains(i)) {
-                    variationPosChecked.add(i);
-                    containNewVaritions = true;
-                }
+            List<Integer> posList = new ArrayList<>();
+            for (int i = 0; i < posOfVariations.size(); i++) {
+                posList.add(posOfVariations.get(i) + start);
             }
-            if (containNewVaritions == true) {
-                psmAlignedChosen = psmAligned;
-                break;
+            String posListString = posList.toString();
+            if (variationPosChecked.contains(posListString)) {
+                continue;
+            } else {
+                variationPosChecked.add(posListString);
+                return psmAligned;
             }
         }
-        return psmAlignedChosen;
+        return null;
     }
 
+    private List<Integer> extractPositionWithMutation(TemplateHooked templateHooked) {
+        List<Integer> posList = new ArrayList<>();
+        ArrayList<ArrayList<PSMAligned>> listOfSpiderList = templateHooked.getSpiderList();
+        int size = listOfSpiderList.size();
+        int prePos = -1;
+        for (int pos = 0; pos < size; pos++) {
+            ArrayList<PSMAligned> psmAlignedList = listOfSpiderList.get(pos);
+            for (PSMAligned psmAligned : psmAlignedList) {
+                if (psmAligned.getPositionOfVariations() == null) {
+                    continue;
+                }
+                if (pos != prePos) {
+                    posList.add(pos);
+                    prePos = pos;
+                }
+            }
+        }
+        return posList;
+
+    }
 
     /**
      * For the given templateHooked, find a list of significant mutation patterns.
@@ -548,25 +617,29 @@ public class MutationValidator {
      * @param scanPSMMap
      * @return a list of mutation patterns on the template, denoted by HashMap<posList, list of significant patterns.
      */
-    public List<HashMap<List<Integer>, List<MutationsPattern>>> validateMutations(TemplateHooked templateHooked,
-                                                                        HashMap<String, PSMAligned> scanPSMMap) {
+    public List<HashMap<List<Integer>, List<MutationsPattern>>> findSignificantMutations(TemplateHooked templateHooked,
+                                                                                         HashMap<String, PSMAligned> scanPSMMap) {
         int maxMutationNum = findMaxMutationNumPerPSM(templateHooked);
         System.out.println("Max mutation num: " + maxMutationNum);
         //Store mutationsOnTemplate according to the mutationNum separately.
         List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsOnTemplateList = new ArrayList<>();
+        //Try new method to extract all pos containing mutations
+        List<Integer> posWithMaxMutationNumList = extractPositionWithMutation(templateHooked);
 
-        for (int mutationNum = maxMutationNum; mutationNum > 0; mutationNum--) {
+    //    for (int mutationNum = 0; mutationNum < maxMutationNum; mutationNum++) {
+            //for (int mutationNum = maxMutationNum; mutationNum > 0; mutationNum--) {
             HashMap<List<Integer>, List<MutationsPattern>> mutationsOnTemplate = new HashMap<>();
-            List<Integer> posWithMaxMutationNumList = extractPositionWithMutationNum(templateHooked, mutationNum);
+            //Old way extract only those spectrum with given number of mutations.
+            //List<Integer> posWithMaxMutationNumList = extractPositionWithMutationNum(templateHooked, mutationNum);
 
             //int pos = posWithMaxMutationNumList.get(0);
+            Set<String> variationPosChecked = new HashSet<>();
             for (int pos : posWithMaxMutationNumList) {
-                //System.out.println("pos: " + pos);
-
-                Set<Integer> variationPosChecked = new HashSet<>();
+                System.out.println("pos: " + pos);
                 while (true) {
-                    List<PSMAligned> psmAlignedList = getListOfPSMAlignedGivenPosAndMutatedNum(templateHooked, pos,
-                                                                                                mutationNum);
+                    //List<PSMAligned> psmAlignedList = getListOfPSMAlignedGivenPosAndMutatedNum(templateHooked, pos,
+                                                     //                                           mutationNum);
+                    List<PSMAligned> psmAlignedList = templateHooked.getSpiderList().get(pos);
                     if (psmAlignedList.size() == 0) {
                         break;
                     }
@@ -575,7 +648,6 @@ public class MutationValidator {
                     if (psmAligned == null) {
                         break;
                     }
-
 
                     HashMap<List<Integer>, List<MutationsPattern>> partMutatedAAsOnTemplate = validateOnePSMAligned(templateHooked,
                             psmAligned, scanPSMMap);
@@ -587,9 +659,11 @@ public class MutationValidator {
                 }
             }
             mutationsOnTemplateList.add(mutationsOnTemplate);
-        }
+    //    }
         return mutationsOnTemplateList;
     }
+
+
 
 
 }

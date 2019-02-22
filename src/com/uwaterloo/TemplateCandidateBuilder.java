@@ -104,6 +104,16 @@ public class TemplateCandidateBuilder {
         }
     }
 
+    /**
+     * Assemble mutation patterns according to overlaps on patterns.  However, it is not correct,
+     * because the adjacent pattern does not contain AA extracted, it might be different. For example,
+     * pattern1 and pattern2 overlap at pos i.  pattern1 [..., i-1, i], pattern2 [i, i+1...]. The AA[i-1] of
+     * pattern1 is not equals to AA[i-1] of reads containing pattern2.
+     *
+     * @param posArray
+     * @param mutationSorted
+     * @return
+     */
     private List<MutationsPattern> assembleMutationPatterns(List<Integer> posArray,
                                                             TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
         List<MutationsPattern> mutationContigList = new ArrayList<>();
@@ -148,6 +158,14 @@ public class TemplateCandidateBuilder {
         }
         return mutationContigList;
 
+    }
+
+    /* need to be rewritten using reads covering */
+    private List<MutationsPattern> assembleMutationPatterns(List<Integer> posArray, TemplateHooked templateHooked,
+                                                            TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
+
+        //TODO
+        return null;
     }
 
     /**
@@ -351,11 +369,100 @@ public class TemplateCandidateBuilder {
         return filteredMutationContigs;
     }
 
-    public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked) {
+    /**  No use
+     * For each pos in PosArray, choose the significant AAs and build a vertice for each of them.
+     * @return
+
+    private List<Map<Character, Vertex>> buildVertice(List<Integer> posArray, TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
+        List<Map<Character, Vertex>> vertice = new ArrayList<>();
+        for (int pos : posArray) {
+            Map<Character, Vertex> signifAAs = new HashMap<>();
+            List<MutationsPattern> mutations = mutationSorted.get(pos);
+            for (MutationsPattern mutation : mutations) {
+                List<Integer> posList = mutation.getPosList();
+                String mutationPattern = mutation.getAAs();
+                for (int i = 0; i < posList.size(); i++) {
+                    if (posList.get(i) == pos) {
+                        char AA = mutationPattern.charAt(i);
+                        Vertex v = new Vertex(pos, AA);
+                        signifAAs.put(AA, v);
+                        break;
+                    }
+                }
+            }
+
+            vertice.add(signifAAs);
+        }
+        return vertice;
+    }
+     */
+    /**
+     * Build edges between adjacent two vertexes.
+     * @param templateHooked
+     * @param scanPSMMap
+     * @param posArray
+     * @param vertexes
+     * @return a list of edgeList.  The list has the same length with posArray. list[i] contains all the edges starting
+     * from pos[i]
+
+    private List<Set<Edge>> buildEdges(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap,
+                                        List<Integer> posArray, List<Map<Character, Vertex>> vertexes) {
+        if (posArray.size() < 2) {
+            return null;
+        }
+
+        List<Set<Edge>> edgesList = new ArrayList<>();
+        for (int i = 0; i < (posArray.size() - 1); i++) {
+            Set<Edge> edges = new HashSet<>();
+            edgesList.add(edges);
+        }
+
+        int index = 0;
+        while (index < (posArray.size() - 1)) {
+            int currPos = posArray.get(index);
+            int nextPos = posArray.get(index + 1);
+
+            List<String> scans = templateHooked.getMappedScanList().get(currPos);
+            for (String scan : scans) {
+                PSMAligned psmAligned = scanPSMMap.get(scan);
+                int pos2 = nextPos - psmAligned.getStart();
+                if (pos2 > psmAligned.getAAs().length) {
+                    continue;
+                }
+                int pos1 = currPos - psmAligned.getStart();
+                char AA1 = psmAligned.getAAs()[pos1];
+                Vertex vertex1 = vertexes.get(currPos).get(AA1);
+                if (vertex1 == null) {
+                    System.err.println("Error: null vertex");
+                }
+
+                char AA2 = psmAligned.getAAs()[pos2];
+                Vertex vertex2 = vertexes.get(nextPos).get(AA2);
+                if (vertex2 == null) {
+                    System.err.println("Error: null vertex");
+                }
+                Edge edge = new Edge(vertex1, vertex2);
+                edgesList.get(index).add(edge);
+            }
+
+            index += 1;
+        }
+        return edgesList;
+    }
+
+    */
+
+    public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap) {
         List<Integer> posArray = getPosSet();
         System.out.println(posArray.toString());
 
         TreeMap<Integer, List<MutationsPattern>> mutationSorted = sortMutationsAccordingPos();
+        /* New method to adopt the method of generating a connecting graph and find all the connected path
+        List<Map<Character, Vertex>> vertexes = buildVertice(posArray, mutationSorted);
+        //There is problem of generating edges in this way
+        List<Set<Edge>> edges = buildEdges(templateHooked, scanPSMMap, posArray, vertexes);
+        List<MutationsPattern> mutationContigs = findConnectedPaths(vertexes, edges, posArray);
+*/
 
         System.out.println("Process all patterns consecutive according to posArray...");
         TreeMap<Integer, List<MutationsPattern>> processedMutations = makePatternsConsecutive(mutationSorted, posArray, templateHooked);
@@ -364,7 +471,7 @@ public class TemplateCandidateBuilder {
         System.out.println("Assembling mutations patterns...");
         List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, processedMutations);
 
-        int confThresh = 3; //Currently use 3 as minimal frequency of the pattern to be considered.
+        int confThresh = 1; //Currently use 3 as minimal frequency of the pattern to be considered.
         List<MutationsPattern> filteredMutationContigs = filterMutationContigs(assembledMutationContigs, confThresh);
         TreeMap<Integer, Set<Integer>> posMutationsMap = buildPosAssembledMutationsMap(filteredMutationContigs);
 

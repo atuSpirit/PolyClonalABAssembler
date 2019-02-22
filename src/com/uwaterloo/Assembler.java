@@ -15,7 +15,7 @@ public class Assembler {
     public void process() {
         String dir = "D:\\Hao\\data\\for_analysis\\polyclonalAssemblerData\\";
         dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
-        dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_13\\";
+        //dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_13\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -29,7 +29,7 @@ public class Assembler {
 
         String templateFasta = dir + "Nuno.2016.heavy.template.fasta";
         templateFasta = dir + "ab19001.template_top8.fasta";
-        templateFasta = dir + "Waters_mAB.template_top4.fasta";
+        //templateFasta = dir + "Waters_mAB.template_top4.fasta";
         TemplatesLoader loader = new TemplatesLoader();
         List<Template> templateList = loader.loadTemplateFasta(templateFasta);
 
@@ -48,6 +48,8 @@ public class Assembler {
             TemplateHooked aTemplateHooked = templateHookedList.get(templateId);
             List<char[]> top2CandidateTemplates = findCandidateForOneTemplate(aTemplateHooked, templateId, listOfPSMAlignedList);
             templateHookedList.get(templateId).setModifiedTemplates(top2CandidateTemplates);
+            //Debug
+            break;
         }
 
 
@@ -58,6 +60,8 @@ public class Assembler {
                 System.out.println(">can" + (i + 1) + "_" + templateAccession);
                 System.out.println(new String(candidateTemplates.get(i)));
             }
+            //Debug
+            break;
         }
 
     }
@@ -85,11 +89,11 @@ public class Assembler {
         HashMap<String, PSMAligned> scanPSMMap = scanPSMMapper.getScanPSMMap();
 
         MutationValidator validator = new MutationValidator();
-        List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsOnTemplateList = validator.validateMutations(aTemplateHooked, scanPSMMap);
+        List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsOnTemplateList = validator.findSignificantMutations(aTemplateHooked, scanPSMMap);
         //  printMutationsOnTemplate(mutationsOnTemplateList);
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder(mutationsOnTemplateList);
-        List<char[]> top2CandidateTemplates = templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked);
+        List<char[]> top2CandidateTemplates = templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked, scanPSMMap);
 
         return top2CandidateTemplates;
 
