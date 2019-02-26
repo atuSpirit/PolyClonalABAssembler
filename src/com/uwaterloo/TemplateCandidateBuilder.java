@@ -47,6 +47,8 @@ public class TemplateCandidateBuilder {
         add the AA on template to them to make them consecutive for later procession.
         For exmaple, pos List contain {18, 19, 27}, but one pattern only has {18, 27}.
         Then the AA at 19 on template will be added to the middle.
+        This is wrong, because the middle AA could not same with that on template.  It should
+        be same as the AA on reads.
      */
     private TreeMap<Integer, List<MutationsPattern>> makePatternsConsecutive(TreeMap<Integer, List<MutationsPattern>> mutationSorted,
                                                            List<Integer> posList, TemplateHooked templateHooked) {
@@ -372,7 +374,7 @@ public class TemplateCandidateBuilder {
     /**  No use
      * For each pos in PosArray, choose the significant AAs and build a vertice for each of them.
      * @return
-
+     */
     private List<Map<Character, Vertex>> buildVertice(List<Integer> posArray, TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
         List<Map<Character, Vertex>> vertice = new ArrayList<>();
         for (int pos : posArray) {
@@ -395,7 +397,7 @@ public class TemplateCandidateBuilder {
         }
         return vertice;
     }
-     */
+
     /**
      * Build edges between adjacent two vertexes.
      * @param templateHooked
@@ -404,7 +406,7 @@ public class TemplateCandidateBuilder {
      * @param vertexes
      * @return a list of edgeList.  The list has the same length with posArray. list[i] contains all the edges starting
      * from pos[i]
-
+     */
     private List<Set<Edge>> buildEdges(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap,
                                         List<Integer> posArray, List<Map<Character, Vertex>> vertexes) {
         if (posArray.size() < 2) {
@@ -450,7 +452,38 @@ public class TemplateCandidateBuilder {
         return edgesList;
     }
 
-    */
+    /**
+     * Merge nested patterns with same starting position into a larger one. For example,
+     * Pos 66
+     * MSSR at [66, 70, 74, 76] freq: 7 score: 2650
+     * MSLY at [66, 70, 74, 76] freq: 1 score: 400
+     * MSR at [66, 70, 76] freq: 7 score: 1950
+     * M at [66] freq: 15 score: 1400
+     * MSR is a nested pattern of MSSR, because all the reads of SR already checked in SSR, so
+     * its pattern belongs to SSR too.  So delete SR pattern, only remain SSR and SLY. Current method is to keep only
+     * those patterns with max length
+     * @param mutationSorted a list of MutationPatterns sorted by ascending position. For each position, the patterns are
+     *                       sorted descending by the length of the pattern
+     * @param posArray
+     * @return
+     */
+    private TreeMap<Integer, List<MutationsPattern>> mergeNestedPatterns(TreeMap<Integer, List<MutationsPattern>> mutationSorted, List<Integer> posArray) {
+        for (Integer pos : posArray) {
+            List<MutationsPattern> patterns = mutationSorted.get(pos);
+            if (patterns == null) {
+                continue;
+            }
+            int maxLen = patterns.get(0).getPosList().size();
+            List<MutationsPattern> patternsWithMaxLen = new ArrayList<>();
+            for (MutationsPattern pattern : patterns) {
+                if (pattern.getPosList().size() == maxLen) {
+                    patternsWithMaxLen.add(pattern);
+                }
+            }
+            mutationSorted.put(pos, patternsWithMaxLen);
+        }
+        return mutationSorted;
+    }
 
     public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap) {
         List<Integer> posArray = getPosSet();
@@ -464,12 +497,27 @@ public class TemplateCandidateBuilder {
         List<MutationsPattern> mutationContigs = findConnectedPaths(vertexes, edges, posArray);
 */
 
+        /*
         System.out.println("Process all patterns consecutive according to posArray...");
         TreeMap<Integer, List<MutationsPattern>> processedMutations = makePatternsConsecutive(mutationSorted, posArray, templateHooked);
         printMutationsAlongPos(mutationSorted);
+*/
+        printMutationsAlongPos(mutationSorted);
+        System.out.println("Merge nested mutation patterns...");
+        TreeMap<Integer, List<MutationsPattern>> processedMutations = mergeNestedPatterns(mutationSorted, posArray);
+        printMutationsAlongPos(processedMutations);
 
+        /* Do not assemble mutation patterns */
         System.out.println("Assembling mutations patterns...");
-        List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, processedMutations);
+       // List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, mutationSorted);
+        List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, templateHooked, processedMutations);
+
+       /* List<MutationsPattern> assembledMutationContigs = new ArrayList<>();
+        for (List<MutationsPattern> patternList : mutationSorted.values()) {
+            //for (List<MutationsPattern> patternList : processedMutations.values()) {  Wrong one
+            assembledMutationContigs.addAll(patternList);
+        }
+        */
 
         int confThresh = 1; //Currently use 3 as minimal frequency of the pattern to be considered.
         List<MutationsPattern> filteredMutationContigs = filterMutationContigs(assembledMutationContigs, confThresh);

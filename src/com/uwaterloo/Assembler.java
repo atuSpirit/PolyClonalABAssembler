@@ -49,7 +49,7 @@ public class Assembler {
             List<char[]> top2CandidateTemplates = findCandidateForOneTemplate(aTemplateHooked, templateId, listOfPSMAlignedList);
             templateHookedList.get(templateId).setModifiedTemplates(top2CandidateTemplates);
             //Debug
-            break;
+            //break;
         }
 
 
@@ -61,7 +61,7 @@ public class Assembler {
                 System.out.println(new String(candidateTemplates.get(i)));
             }
             //Debug
-            break;
+            //break;
         }
 
     }

@@ -62,7 +62,7 @@ public class PSMIonsReader extends CSVReader {
         HashMap<String, short[]> scanIonScoresMap = new HashMap<>();
         for (String scan : scanIonsMap.keySet()) {
             short[] ions = scanIonsMap.get(scan);
-            if (scan == "F6:12812") {
+            if (scan.equals("F2:7747")) {
                 System.out.println("Debug");
             }
             short[] ionsScores = computeIonsScoresFromIonPos(ions);
