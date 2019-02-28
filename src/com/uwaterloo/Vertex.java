@@ -2,18 +2,19 @@ package com.uwaterloo;
 
 public class Vertex {
     int pos;
-    char AA;
+    //char AA;
+    MutationsPattern pattern;
 
-    public Vertex(int pos, char AA) {
+    public Vertex(int pos, MutationsPattern pattern) {
         this.pos = pos;
-        this.AA = AA;
+        this.pattern = pattern;
     }
 
     public int getPos() {
         return pos;
     }
 
-    public char getAA() {
-        return AA;
+    public MutationsPattern getPattern() {
+        return this.pattern;
     }
 }

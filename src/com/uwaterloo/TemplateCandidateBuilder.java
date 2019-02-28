@@ -165,6 +165,9 @@ public class TemplateCandidateBuilder {
     /* need to be rewritten using reads covering */
     private List<MutationsPattern> assembleMutationPatterns(List<Integer> posArray, TemplateHooked templateHooked,
                                                             TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
+        TreeMap<Integer, List<Vertex>> vertexesList = buildVertice(posArray, mutationSorted);
+
+
 
         //TODO
         return null;
@@ -371,31 +374,23 @@ public class TemplateCandidateBuilder {
         return filteredMutationContigs;
     }
 
-    /**  No use
+    /**
      * For each pos in PosArray, choose the significant AAs and build a vertice for each of them.
      * @return
      */
-    private List<Map<Character, Vertex>> buildVertice(List<Integer> posArray, TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
-        List<Map<Character, Vertex>> vertice = new ArrayList<>();
+    private TreeMap<Integer, List<Vertex>> buildVertice(List<Integer> posArray, TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
+        TreeMap<Integer, List<Vertex>> vertexesList = new TreeMap<>();
         for (int pos : posArray) {
-            Map<Character, Vertex> signifAAs = new HashMap<>();
             List<MutationsPattern> mutations = mutationSorted.get(pos);
+            List<Vertex> vertexs = new ArrayList<>();
             for (MutationsPattern mutation : mutations) {
-                List<Integer> posList = mutation.getPosList();
-                String mutationPattern = mutation.getAAs();
-                for (int i = 0; i < posList.size(); i++) {
-                    if (posList.get(i) == pos) {
-                        char AA = mutationPattern.charAt(i);
-                        Vertex v = new Vertex(pos, AA);
-                        signifAAs.put(AA, v);
-                        break;
-                    }
-                }
+                Vertex v = new Vertex(pos, mutation);
+                vertexs.add(v);
             }
 
-            vertice.add(signifAAs);
+            vertexesList.put(pos, vertexs);
         }
-        return vertice;
+        return vertexesList;
     }
 
     /**
@@ -468,6 +463,7 @@ public class TemplateCandidateBuilder {
      * @return
      */
     private TreeMap<Integer, List<MutationsPattern>> mergeNestedPatterns(TreeMap<Integer, List<MutationsPattern>> mutationSorted, List<Integer> posArray) {
+        TreeMap<Integer, List<MutationsPattern>> mergedMutationPatterns = new TreeMap<>();
         for (Integer pos : posArray) {
             List<MutationsPattern> patterns = mutationSorted.get(pos);
             if (patterns == null) {
@@ -478,11 +474,83 @@ public class TemplateCandidateBuilder {
             for (MutationsPattern pattern : patterns) {
                 if (pattern.getPosList().size() == maxLen) {
                     patternsWithMaxLen.add(pattern);
+                } else {
+                    boolean nested = false;
+
+                    for (MutationsPattern longPattern : patternsWithMaxLen) {
+                        List<Integer> posList = pattern.getPosList();
+                        List<Integer> longPosList = longPattern.getPosList();
+                        int j = 0;
+                        boolean matched = false;
+                        for (int i = 0; i < longPosList.size(); i++) {
+                            if (posList.get(j) == longPosList.get(i)) {
+                                if (pattern.getAAs().charAt(j) == longPattern.getAAs().charAt(i)) {
+                                    matched = true;
+                                } else {
+                                    matched = false;
+                                }
+                                j++;
+                                if (j >= posList.size()) {
+                                    break;
+                                }
+                            }
+                        }
+                        nested = matched | nested;
+                    }
+                    if (!nested) {
+                        System.err.println("Pattern " + pattern + " is not nested to longer patter at position " + pos);
+                    }
                 }
             }
-            mutationSorted.put(pos, patternsWithMaxLen);
+            mergedMutationPatterns.put(pos, patternsWithMaxLen);
         }
-        return mutationSorted;
+        return mergedMutationPatterns;
+    }
+
+    /**
+     *  According to spectra in templateHooked and posArray, extend the patterns to include adjacent positions in posArray.
+     *  For example,
+     *  18
+     *  DG at [18, 27] freq: 20 score: 3433 will become [18, 19, 27]
+     *  19
+     * VGS at [19, 27, 34] freq: 10 score: 2391 -> DVGS at [18, 19, 27, 34]
+     */
+    private TreeMap<Integer, List<MutationsPattern>> extendPatterns(TreeMap<Integer, List<MutationsPattern>> processedMutations,
+                                                                    List<Integer> posArray, TemplateHooked templateHooked,
+                                                                    HashMap<String, PSMAligned> scanPSMMap) {
+        for (Integer pos : posArray) {
+            List<MutationsPattern> mutationsPatterns = processedMutations.get(pos);
+            List<String> scanList = templateHooked.getMappedScanList().get(pos);
+            for (MutationsPattern pattern : mutationsPatterns) {
+                List<Integer> subPosList = pattern.getPosList();
+                for (String scan : scanList) {
+                    PSMAligned psmAligned = scanPSMMap.get(scan);
+                    int start = psmAligned.getStart();
+                    int end = psmAligned.getEnd();
+                    List<Integer> posList = getPosListInRange(posArray, start, end);
+                    String AAs = extractAAs(subPosList, psmAligned.getAAs());
+                    if (AAs.equals(pattern.getAAs())) {
+                        //TODO extend
+                    }
+                }
+
+            }
+        }
+    }
+
+    /* Helper function to extract AAs in subPosList from AAs. */
+    private String extractAAs(List<Integer> subPosList, char[] AAs) {
+    }
+
+    /* Helper function to get pos in posArray in range of [start, end] */
+    private List<Integer> getPosListInRange(List<Integer> posArray, int start, int end) {
+        List<Integer> posListInRange = new ArrayList<>();
+        for (int pos : posArray) {
+            if ((pos >= start) && (pos <= end)) {
+                posListInRange.add(pos);
+            }
+        }
+        return posListInRange;
     }
 
     public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap) {
@@ -507,10 +575,14 @@ public class TemplateCandidateBuilder {
         TreeMap<Integer, List<MutationsPattern>> processedMutations = mergeNestedPatterns(mutationSorted, posArray);
         printMutationsAlongPos(processedMutations);
 
+        TreeMap<Integer, List<MutationsPattern>> extendedMutations = extendPatterns(processedMutations, posArray,
+                                                                                    templateHooked, scanPSMMap);
+        printMutationsAlongPos(extendedMutations);
+
         /* Do not assemble mutation patterns */
         System.out.println("Assembling mutations patterns...");
        // List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, mutationSorted);
-        List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, templateHooked, processedMutations);
+        List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, templateHooked, extendedMutations);
 
        /* List<MutationsPattern> assembledMutationContigs = new ArrayList<>();
         for (List<MutationsPattern> patternList : mutationSorted.values()) {
