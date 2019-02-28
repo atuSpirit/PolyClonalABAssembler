@@ -26,7 +26,6 @@ public class Assembler {
         HashMap<String, short[]> scanIonScoresMap = ionsReader.setIonsScore(scanIonPosesMap);
         setIonScoresForPSMList(psmList, scanIonScoresMap);
 
-
         String templateFasta = dir + "Nuno.2016.heavy.template.fasta";
         templateFasta = dir + "ab19001.template_top8.fasta";
         //templateFasta = dir + "Waters_mAB.template_top4.fasta";

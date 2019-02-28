@@ -21,6 +21,13 @@ public class MutationsPattern {
 
     }
 
+    public MutationsPattern(List<Integer> posList, String AAs) {
+        this.posList = posList;
+        this.AAs = AAs;
+        this.freq = 0;
+        this.score = 0;
+    }
+
     public List<Integer> getPosList() {
         return posList;
     }

@@ -518,6 +518,7 @@ public class TemplateCandidateBuilder {
     private TreeMap<Integer, List<MutationsPattern>> extendPatterns(TreeMap<Integer, List<MutationsPattern>> processedMutations,
                                                                     List<Integer> posArray, TemplateHooked templateHooked,
                                                                     HashMap<String, PSMAligned> scanPSMMap) {
+        Map<MutationsPattern, MutationsPattern> extendedPatterns = new HashMap<>();
         for (Integer pos : posArray) {
             List<MutationsPattern> mutationsPatterns = processedMutations.get(pos);
             List<String> scanList = templateHooked.getMappedScanList().get(pos);
@@ -527,19 +528,54 @@ public class TemplateCandidateBuilder {
                     PSMAligned psmAligned = scanPSMMap.get(scan);
                     int start = psmAligned.getStart();
                     int end = psmAligned.getEnd();
+                    if (end > subPosList.get(subPosList.size() - 1)) {
+                        continue;
+                    }
+                    //Get the pos List of posArray in the range of this peptide
                     List<Integer> posList = getPosListInRange(posArray, start, end);
-                    String AAs = extractAAs(subPosList, psmAligned.getAAs());
+                    String AAs = extractAAs(subPosList, psmAligned).getAAs();
                     if (AAs.equals(pattern.getAAs())) {
-                        //TODO extend
+                        MutationsPattern extendedPattern =  extractAAs(posList, psmAligned);;
+                        if (extendedPatterns.containsKey(extendedPattern)) {
+                            //Update the freq and score
+                            extendedPatterns.get(extendedPattern).setFreq(extendedPatterns.get(extendedPattern).getFreq() + 1);
+                            extendedPatterns.get(extendedPattern).setScore(extendedPattern.getScore() +
+                                        extendedPatterns.get(extendedPattern).getScore());
+                        } else {
+                            extendedPatterns.put(extendedPattern, extendedPattern);
+                        }
                     }
                 }
 
             }
         }
+        TreeMap<Integer, List<MutationsPattern>> extendedPatternsMap = new TreeMap<>();
+        for (MutationsPattern extendedPattern : extendedPatterns.values()) {
+            int pos = extendedPattern.getPosList().get(0);
+            if (extendedPatternsMap.containsKey(pos)) {
+                extendedPatternsMap.get(pos).add(extendedPattern);
+            } else {
+                List<MutationsPattern> extendedPatternsList = new ArrayList<>();
+                extendedPatternsList.add(extendedPattern);
+                extendedPatternsMap.put(pos, extendedPatternsList);
+            }
+        }
+        return extendedPatternsMap;
     }
 
     /* Helper function to extract AAs in subPosList from AAs. */
-    private String extractAAs(List<Integer> subPosList, char[] AAs) {
+    private MutationsPattern extractAAs(List<Integer> posList, PSMAligned psmAligned) {
+        char[] AAs = psmAligned.getAAs();
+        int start = psmAligned.getStart();
+        short[] scores = psmAligned.getIonScores();
+        String extractedAAs = "";
+        int score = 0;
+        for (int pos : posList) {
+            extractedAAs += AAs[pos - start];
+            score += scores[pos - start];
+        }
+        MutationsPattern extendedPattern = new MutationsPattern(posList, extractedAAs, 1, score);
+        return extendedPattern;
     }
 
     /* Helper function to get pos in posArray in range of [start, end] */
