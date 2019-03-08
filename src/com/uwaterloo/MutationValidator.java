@@ -217,10 +217,10 @@ public class MutationValidator {
             if (ratio > threshold) {
                 significantMutatedPattern.add(pattern);
                 //Debug
-                System.out.printf("%s %.4f\n", pattern, score / total);
+                System.out.printf("Debug %s %.4f\n", pattern, score / total);
             } else {
                 //Debug
-                System.out.printf("unsignificant %s %.4f\n", pattern, score / total);
+                System.out.printf("Debug unsignificant %s %.4f\n", pattern, score / total);
             }
         }
 
@@ -252,7 +252,7 @@ public class MutationValidator {
                 spiderList.set(index, null);
             } else {
                 //Debug
-                System.out.println("spider remove scan " + psmAligned.getScan());
+                System.out.println("Debug spider remove scan " + psmAligned.getScan());
             }
         }
         templateHooked.getSpiderList().set(pos, newSpiderList);
