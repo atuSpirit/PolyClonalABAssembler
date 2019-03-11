@@ -366,6 +366,8 @@ public class TemplateCandidateBuilder {
         return candidateTemplate;
     }
 
+
+
     private List<MutationsPattern> filterMutationContigs(List<MutationsPattern> assembledMutationContigs, int confThresh) {
         List<MutationsPattern> filteredMutationContigs = new ArrayList<>();
         for (MutationsPattern mutationsPattern : assembledMutationContigs) {
@@ -671,19 +673,20 @@ public class TemplateCandidateBuilder {
     /* Extract the AA on template of positions in posArray. If pos contains only one
        significant AA, the position of template should be changed to this AA.
     */
-    private List<Character> getAAsOnTemplate(TemplateHooked templateHooked, List<Integer> posArray,
+    private MutationsPattern getAAsOnTemplate(TemplateHooked templateHooked, List<Integer> posArray,
                                              TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
-        List<Character> AAsOnTemplate = new ArrayList<>();
+        String AAsOnTemplate = "";
         for (int pos : posArray) {
             List<MutationsPattern> significantAAs = significantAAsPerPos.get(pos);
             //If pos contains only one significant AA, the position of template should be changed to this AA.
             if (significantAAs.size() == 1) {
-                AAsOnTemplate.add(significantAAs.get(0).getAAs().charAt(0));
+                AAsOnTemplate += significantAAs.get(0).getAAs().charAt(0);
             } else {
-                AAsOnTemplate.add(templateHooked.getSeq()[pos]);
+                AAsOnTemplate += templateHooked.getSeq()[pos];
             }
         }
-        return AAsOnTemplate;
+        MutationsPattern templatePattern = new MutationsPattern(posArray, AAsOnTemplate, 1, 1);
+        return templatePattern;
     }
 
     public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap) {
@@ -727,6 +730,12 @@ public class TemplateCandidateBuilder {
         TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos = getSigVariationsPerPos(AAsPerPos, ratio_thresh);
         printMutationsAlongPos(significantAAsPerPos);
 
+        /*
+        List<MutationsPattern> filteredExtendedMutations = filterSignificantMutations(extendedMutations,
+                                                                                significantAAsPerPos);
+
+        TreeMap<Integer, Set<Integer>> posMutationsMap = buildPosAssembledMutationsMap(filteredExtendedMutations);
+        */
         /* Do not assemble mutation patterns */
         /*
         System.out.println("Assembling mutations patterns...");
@@ -753,50 +762,105 @@ public class TemplateCandidateBuilder {
         /* Get the AAs on template of positions in posArray. If significantAAsPerPos has only one variation, change
             the AA of this position to it.
          */
-        List<Character> templateAAs = getAAsOnTemplate(templateHooked, posArray, significantAAsPerPos);
+        MutationsPattern templatePattern = getAAsOnTemplate(templateHooked, posArray, significantAAsPerPos);
         System.out.println(posArray.toString());
-        System.out.println(templateAAs.toString());
+        System.out.println(templatePattern.toString());
 
         System.out.println("Generating candidate templates...");
         List<char[]> candidateTemplates = new ArrayList<>();
 
-
+/*
         //Apply homogeneous mutations to template to generate one candidate template
-        List<MutationsPattern> homogeneousMutations = getHomogeneousMutations(significantAAsPerPos, templateAAs);
+        List<MutationsPattern> homogeneousMutations = getHomogeneousMutations(significantAAsPerPos, templatePattern.getAAs());
         char[] homoCandidateTemplate = getCandidateTemplate(templateHooked, homogeneousMutations);
         candidateTemplates.add(homoCandidateTemplate);
+*/
+
+        //Add the template with homogeneous position altered as one of the template
+        List<MutationsPattern> patternList = new ArrayList<>();
+        patternList.add(templatePattern);
+        char[] templateCandidate = getCandidateTemplate(templateHooked, patternList);
+        candidateTemplates.add(templateCandidate);
 
 
+        char[] candidateTemplate1 = templateCandidate.clone();
+        char[] candidateTemplate2 = templateCandidate.clone();
 
-   //     char[] templateCandidate = getCandidateTemplate(templateHooked, templateAAs);
+        changeCandidateTemplate(candidateTemplate1, significantAAsPerPos);
+        changeCandidateTemplate(candidateTemplate2, significantAAsPerPos);
 
-        /*
-        List<MutationsPattern> topMutationContigList1 = pickMuationContigsWithTopFreq(filteredMutationContigs, posMutationsMap);
+
+/*
+        List<MutationsPattern> topMutationContigList1 = pickMuationContigsWithTopFreq(filteredExtendedMutations, posMutationsMap);
         char[] candidateTemplate1 = getCandidateTemplate(templateHooked, topMutationContigList1);
 
-        List<MutationsPattern> topMutationContigList2 = pickMuationContigsWithTopFreq(filteredMutationContigs, posMutationsMap);
+        List<MutationsPattern> topMutationContigList2 = pickMuationContigsWithTopFreq(filteredExtendedMutations, posMutationsMap);
         char[] candidateTemplate2 = getCandidateTemplate(templateHooked, topMutationContigList2);
+        */
 
         candidateTemplates.add(candidateTemplate1);
         candidateTemplates.add(candidateTemplate2);
 
-*/
+
         return candidateTemplates;
+
+    }
+
+    private void changeCandidateTemplate(char[] candidateTemplate, TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
+        for (int pos : significantAAsPerPos.keySet()) {
+            List<MutationsPattern> AAsList = significantAAsPerPos.get(pos);
+
+            MutationsPattern patternWithMaxScore = AAsList.get(0);
+            int maxScore = patternWithMaxScore.getScore();
+            for (MutationsPattern AA : AAsList) {
+                if (AA.getScore() > maxScore) {
+                    patternWithMaxScore = AA;
+                    maxScore = AA.getScore();
+                }
+            }
+            candidateTemplate[pos] = patternWithMaxScore.getAAs().charAt(0);
+            patternWithMaxScore.setScore(1);
+        }
+    }
+
+    private List<MutationsPattern> filterSignificantMutations(TreeMap<Integer, List<MutationsPattern>> extendedMutations,
+                                                                                TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
+        List<MutationsPattern> significantExtendedMutations = new ArrayList<>();
+        for (List<MutationsPattern> mutationsPatternList : extendedMutations.values()) {
+            for (MutationsPattern pattern : mutationsPatternList) {
+                boolean significant = true;
+                List<Integer> posList = pattern.getPosList();
+                for (int i = 0; i < posList.size(); i++) {
+                    boolean found = false;
+                    List<MutationsPattern> significantAAList = significantAAsPerPos.get(posList.get(i));
+                    for (MutationsPattern AA : significantAAList) {
+                        //If the ith AA in pattern is found in significantAAList
+                        if (pattern.getAAs().charAt(i) == AA.getAAs().charAt(0)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found == false) {
+                        significant = false;
+                        break;
+                    }
+                }
+                if (significant == true) {
+                    significantExtendedMutations.add(pattern);
+                }
+            }
+        }
+        return significantExtendedMutations;
 
     }
 
     /* Find those homogeneous mutations in significant mutations */
     private List<MutationsPattern> getHomogeneousMutations(TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos,
-                                                           List<Character> templateAAs) {
+                                                           String templateAAs) {
         List<MutationsPattern> homogeneousMutations = new ArrayList<>();
         int i = 0;
         for (int pos : significantAAsPerPos.keySet()) {
             if (significantAAsPerPos.get(pos).size() == 1) {
-                //If the significant AA equals to the AA on template
-                if (significantAAsPerPos.get(pos).get(0).getAAs().charAt(0) == templateAAs.get(i)) {
-                    i++;
-                    continue;
-                }
                 homogeneousMutations.addAll(significantAAsPerPos.get(pos));
             }
             i++;

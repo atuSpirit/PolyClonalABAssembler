@@ -15,8 +15,8 @@ public class Assembler {
     public void process() {
         String dir = "D:\\Hao\\data\\for_analysis\\polyclonalAssemblerData\\";
         dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
-        //dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_13\\";
-        dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
+        dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_46\\";
+        //dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_29\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
@@ -30,7 +30,7 @@ public class Assembler {
 
         String templateFasta = dir + "Nuno.2016.heavy.template.fasta";
         templateFasta = dir + "ab19001.template_top8.fasta";
-        //templateFasta = dir + "Waters_mAB.template_top4.fasta";
+        templateFasta = dir + "Waters_mAB.template_top4.fasta";
         //templateFasta = dir + "ab19001.5enzymes.template_top8.fasta";
         templateFasta = dir + "candidate_template2.fasta";
         TemplatesLoader loader = new TemplatesLoader();
