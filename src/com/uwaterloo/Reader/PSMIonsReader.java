@@ -35,7 +35,12 @@ public class PSMIonsReader extends CSVReader {
 
                 String scan = fields[fieldIndexMap.get("scan")];
                 int length = Integer.valueOf(fields[fieldIndexMap.get("Length")]);
+                String ionType = fields[fieldIndexMap.get("ion")];
                 int pos = Integer.valueOf(fields[fieldIndexMap.get("pos")]) - 1;    //starting from zero
+                if (ionType.startsWith("y")) {
+                    //For y-ion, the pos in file is from the right side, should be transformed to starting from left
+                    pos = length - pos - 2;
+                }
                 if (scanIonsMap.containsKey(scan)) {
                     scanIonsMap.get(scan)[pos] = 1;
                 } else {
@@ -62,9 +67,6 @@ public class PSMIonsReader extends CSVReader {
         HashMap<String, short[]> scanIonScoresMap = new HashMap<>();
         for (String scan : scanIonsMap.keySet()) {
             short[] ions = scanIonsMap.get(scan);
-            if (scan.equals("F2:7747")) {
-                System.out.println("Debug");
-            }
             short[] ionsScores = computeIonsScoresFromIonPos(ions);
             scanIonScoresMap.put(scan, ionsScores);
         }

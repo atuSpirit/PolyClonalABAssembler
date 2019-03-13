@@ -351,6 +351,9 @@ public class TemplateCandidateBuilder {
      */
     private char[] getCandidateTemplate(TemplateHooked templateHooked, List<MutationsPattern> topMutationContigList) {
         char[] candidateTemplate = templateHooked.getSeq().clone();
+        if (topMutationContigList.size() == 0) {
+            return candidateTemplate;
+        }
 
         for (MutationsPattern mutationsPattern: topMutationContigList) {
             List<Integer> posList = mutationsPattern.getPosList();
@@ -524,16 +527,37 @@ public class TemplateCandidateBuilder {
                                                                     HashMap<String, PSMAligned> scanPSMMap) {
         Map<MutationsPattern, MutationsPattern> extendedPatterns = new HashMap<>();
         for (Integer pos : posArray) {
-            //Extract all mutation patterns starting from this position
-            List<MutationsPattern> mutationsPatterns = processedMutations.get(pos);
-            if (mutationsPatterns == null) {
-                continue;
-            }
             //Extract all scans covering this position
             List<String> scanList = templateHooked.getMappedScanList().get(pos);
+
+            //Extract all mutation patterns starting from this position
+            List<MutationsPattern> mutationsPatterns = processedMutations.get(pos);
+            /* If the mutation Patterns is null for pos, the position contains mutation, however,
+               no mutation patterns starting from this position.  We should extract a single length AA pattern of this position
+               to form a new mutation pattern from the scans covering this position */
+            if (mutationsPatterns == null) {
+                List<Integer> AAPosList = new ArrayList<>();
+                AAPosList.add(pos);
+                for (String scan : scanList) {
+                    PSMAligned psmAligned = scanPSMMap.get(scan);
+                    MutationsPattern extendedPattern = extractAAs(AAPosList, psmAligned);
+
+                    if (extendedPatterns.containsKey(extendedPattern)) {
+                        //Update the freq and score
+                        extendedPatterns.get(extendedPattern).setFreq(extendedPatterns.get(extendedPattern).getFreq() + 1);
+                        extendedPatterns.get(extendedPattern).setScore(extendedPattern.getScore() +
+                                extendedPatterns.get(extendedPattern).getScore());
+                    } else {
+                        extendedPatterns.put(extendedPattern, extendedPattern);
+                    }
+                }
+                continue;
+            }
+
             //For each mutation pattern, extend it based on the scans covering this position
             for (MutationsPattern pattern : mutationsPatterns) {
                 List<Integer> subPosList = pattern.getPosList();
+
                 for (String scan : scanList) {
                     PSMAligned psmAligned = scanPSMMap.get(scan);
                     int start = psmAligned.getStart();
@@ -623,9 +647,9 @@ public class TemplateCandidateBuilder {
         return variationsPerPos;
     }
 
-    /* Filter the AA under ratio_thresh */
+    /* Filter the AA under ratio_thresh. All pattern in sigAAsPerPos are a single AA */
     private TreeMap<Integer, List<MutationsPattern>> getSigVariationsPerPos(TreeMap<Integer, List<MutationsPattern>> AAsPerPos,
-                                                                            float ratio_thresh) {
+                                                                            char[] templateAAs, float ratio_thresh) {
         TreeMap<Integer, List<MutationsPattern>> sigAAsPerPos = new TreeMap<>();
         for (int pos : AAsPerPos.keySet()) {
             List<MutationsPattern> patterns = AAsPerPos.get(pos);
@@ -638,6 +662,9 @@ public class TemplateCandidateBuilder {
                 if ((pattern.getScore() / scoreSum) >= ratio_thresh) {
                     sigPatterns.add(pattern);
                 }
+            }
+            if ((sigPatterns.size() == 1) && (sigPatterns.get(0).getAAs().charAt(0) == templateAAs[pos])) {
+                continue;
             }
             sigAAsPerPos.put(pos, sigPatterns);
         }
@@ -676,16 +703,21 @@ public class TemplateCandidateBuilder {
     private MutationsPattern getAAsOnTemplate(TemplateHooked templateHooked, List<Integer> posArray,
                                              TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
         String AAsOnTemplate = "";
+        List<Integer> newPosArray = new ArrayList<>();
         for (int pos : posArray) {
             List<MutationsPattern> significantAAs = significantAAsPerPos.get(pos);
+            if (significantAAs == null) {
+                continue;
+            }
             //If pos contains only one significant AA, the position of template should be changed to this AA.
             if (significantAAs.size() == 1) {
                 AAsOnTemplate += significantAAs.get(0).getAAs().charAt(0);
             } else {
                 AAsOnTemplate += templateHooked.getSeq()[pos];
             }
+            newPosArray.add(pos);
         }
-        MutationsPattern templatePattern = new MutationsPattern(posArray, AAsOnTemplate, 1, 1);
+        MutationsPattern templatePattern = new MutationsPattern(newPosArray, AAsOnTemplate, 1, 1);
         return templatePattern;
     }
 
@@ -722,12 +754,14 @@ public class TemplateCandidateBuilder {
         printMutationsAlongPos(extendedMutations);
 
         System.out.println("Get variations per pos...");
+        //Get AA variation for each pos. The mutationPattern contains only one AA
         TreeMap<Integer, List<MutationsPattern>> AAsPerPos = getVariationsPerPos(extendedMutations);
         printMutationsAlongPos(AAsPerPos);
 
         float ratio_thresh = 0.1f;
         System.out.println("Filter significant AA per pos...");
-        TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos = getSigVariationsPerPos(AAsPerPos, ratio_thresh);
+        TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos = getSigVariationsPerPos(AAsPerPos,
+                                                                    templateHooked.getSeq(), ratio_thresh);
         printMutationsAlongPos(significantAAsPerPos);
 
         /*
@@ -763,32 +797,42 @@ public class TemplateCandidateBuilder {
             the AA of this position to it.
          */
         MutationsPattern templatePattern = getAAsOnTemplate(templateHooked, posArray, significantAAsPerPos);
+        posArray = templatePattern.getPosList();
         System.out.println(posArray.toString());
         System.out.println(templatePattern.toString());
 
         System.out.println("Generating candidate templates...");
         List<char[]> candidateTemplates = new ArrayList<>();
 
-/*
-        //Apply homogeneous mutations to template to generate one candidate template
-        List<MutationsPattern> homogeneousMutations = getHomogeneousMutations(significantAAsPerPos, templatePattern.getAAs());
-        char[] homoCandidateTemplate = getCandidateTemplate(templateHooked, homogeneousMutations);
-        candidateTemplates.add(homoCandidateTemplate);
-*/
+        boolean homo = false;
 
-        //Add the template with homogeneous position altered as one of the template
-        List<MutationsPattern> patternList = new ArrayList<>();
-        patternList.add(templatePattern);
-        char[] templateCandidate = getCandidateTemplate(templateHooked, patternList);
-        candidateTemplates.add(templateCandidate);
+        if (homo) {
+            //Apply homogeneous mutations to template to generate one candidate template
+            List<MutationsPattern> homogeneousMutations = getHomogeneousMutations(significantAAsPerPos, templatePattern.getAAs());
+            char[] homoCandidateTemplate = getCandidateTemplate(templateHooked, homogeneousMutations);
+            candidateTemplates.add(homoCandidateTemplate);
+        } else {
+            //Add the template with homogeneous position altered as one of the template
+            List<MutationsPattern> patternList = new ArrayList<>();
+            patternList.add(templatePattern);
+            char[] templateCandidate = getCandidateTemplate(templateHooked, patternList);
+            candidateTemplates.add(templateCandidate);
 
 
-        char[] candidateTemplate1 = templateCandidate.clone();
-        char[] candidateTemplate2 = templateCandidate.clone();
+            char[] candidateTemplate1 = templateCandidate.clone();
+            char[] candidateTemplate2 = templateCandidate.clone();
 
-        changeCandidateTemplate(candidateTemplate1, significantAAsPerPos);
-        changeCandidateTemplate(candidateTemplate2, significantAAsPerPos);
+            changeCandidateTemplate(candidateTemplate1, significantAAsPerPos);
+            changeCandidateTemplate(candidateTemplate2, significantAAsPerPos);
 
+            if (!java.util.Arrays.equals(templateCandidate, candidateTemplate1)) {
+                candidateTemplates.add(candidateTemplate1);
+            }
+            if (!java.util.Arrays.equals(templateCandidate, candidateTemplate2)) {
+                candidateTemplates.add(candidateTemplate2);
+            }
+
+        }
 
 /*
         List<MutationsPattern> topMutationContigList1 = pickMuationContigsWithTopFreq(filteredExtendedMutations, posMutationsMap);
@@ -798,8 +842,6 @@ public class TemplateCandidateBuilder {
         char[] candidateTemplate2 = getCandidateTemplate(templateHooked, topMutationContigList2);
         */
 
-        candidateTemplates.add(candidateTemplate1);
-        candidateTemplates.add(candidateTemplate2);
 
 
         return candidateTemplates;

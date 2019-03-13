@@ -18,7 +18,7 @@ public class PSMAlignedTest {
         int start = 345;
         int end = 357;
         short[] ionScores = null;
-        PSMAligned psmAligned = new PSMAligned(scan, peptide, templateId, start, end, ionScores);
+        PSMAligned psmAligned = new PSMAligned(scan, peptide, 0, templateId, start, end, ionScores);
 
         List<Integer> truePosList = new ArrayList<>();
         truePosList.add(1);
@@ -26,7 +26,7 @@ public class PSMAlignedTest {
         assertArrayEquals("VLVSSASTKGPSVF".toCharArray(), psmAligned.getAAs());
 
         peptide = "M(sub T)NQVSLTCLVK";
-        psmAligned = new PSMAligned(scan, peptide, templateId, start, end, ionScores);
+        psmAligned = new PSMAligned(scan, peptide, 0, templateId, start, end, ionScores);
 
         List<Integer> truePosList2 = new ArrayList<>();
         truePosList2.add(0);
@@ -34,12 +34,12 @@ public class PSMAlignedTest {
         assertArrayEquals("MNQVSLTCLVK".toCharArray(), psmAligned.getAAs());
 
         peptide = "M(ins)NQVSLTCLVK";
-        psmAligned = new PSMAligned(scan, peptide, templateId, start, end, ionScores);
+        psmAligned = new PSMAligned(scan, peptide, 0, templateId, start, end, ionScores);
         assertArrayEquals(truePosList2.toArray(), psmAligned.getPositionOfVariations().toArray());
         assertArrayEquals("MNQVSLTCLVK".toCharArray(), psmAligned.getAAs());
 
         peptide = "EM(sub V)S(sub Q)LVESGGGV(sub L)VKPR(sub G)GSL";
-        psmAligned = new PSMAligned("F3:12304", peptide, templateId, 19, 36, ionScores);
+        psmAligned = new PSMAligned("F3:12304", peptide, 0, templateId, 19, 36, ionScores);
         List<Integer> truePosList3 = new ArrayList<>();
         truePosList3.add(1);
         truePosList3.add(2);

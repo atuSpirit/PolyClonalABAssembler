@@ -31,7 +31,7 @@ public class TemplatePSMsAligner {
             List<TMapPosition> tMapPositionList = peptideProteinMap.get(peptide);
             for (TMapPosition tMapPosition : tMapPositionList) {
                 int templateId = tMapPosition.getTemplateId();
-                PSMAligned psmAligned = new PSMAligned(psm.getScan(), peptide, templateId,
+                PSMAligned psmAligned = new PSMAligned(psm.getScan(), peptide, psm.getIntensity(), templateId,
                         tMapPosition.getStart(), tMapPosition.getEnd(), psm.ionScores);
                 listOfPSMAlignedList.get(templateId).add(psmAligned);
             }

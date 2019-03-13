@@ -26,8 +26,8 @@ public class PSMAligned extends PSM {
      * Computed by connecting PSM and protein-peptide table.
     List<TMapPosition> mapPositionList; */
 
-    public PSMAligned(String scan, String peptide, int templateId, int start, int end, short[] ionScores) {
-        super(scan, peptide);
+    public PSMAligned(String scan, String peptide, double intensity, int templateId, int start, int end, short[] ionScores) {
+        super(scan, peptide, intensity);
 
         this.templateId = templateId;
         this.AAs = convertToAA(peptide);
