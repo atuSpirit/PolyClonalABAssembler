@@ -46,10 +46,10 @@ public class PSMReader extends CSVReader{
 
         String scan = fields[fieldIndexMap.get("Scan")];
         String peptide = fields[fieldIndexMap.get("Peptide")];
-        double intensity = 0;
+        int intensity = 0;
 
         if (!fields[fieldIndexMap.get("Area")].equals("")) {
-            intensity = Double.valueOf(fields[fieldIndexMap.get("Area")]);
+            intensity = Double.valueOf(fields[fieldIndexMap.get("Area")]).intValue();
         }
 
 

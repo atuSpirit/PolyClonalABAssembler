@@ -6,19 +6,29 @@ import org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 public class MutationsPattern {
     List<Integer> posList;
     String AAs;
     int freq;
     int score;
+    Set<Long> intensitySet;
 
     public MutationsPattern(List<Integer> posList, String AAs, int freq, int score) {
         this.posList = posList;
         this.AAs = AAs;
         this.freq = freq;
         this.score = score;
+        intensitySet = null;
+    }
 
+    public MutationsPattern(List<Integer> posList, String AAs, int freq, int score, Set<Long> intensitySet) {
+        this.posList = posList;
+        this.AAs = AAs;
+        this.freq = freq;
+        this.score = score;
+        this.intensitySet = intensitySet;
     }
 
     public MutationsPattern(List<Integer> posList, String AAs) {
@@ -58,6 +68,14 @@ public class MutationsPattern {
 
     public void setScore(int score) {
         this.score = score;
+    }
+
+    public Set<Long> getIntensitySet() {
+        return intensitySet;
+    }
+
+    public void setIntensitySet(Set<Long> intensitySet) {
+        this.intensitySet = intensitySet;
     }
 
     @Override

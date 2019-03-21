@@ -12,7 +12,7 @@ public class PSM {
         If it belongs to a seg of length n, then each AA will have int(100 / n) score.
      */
     short[] ionScores;
-    double intensity;
+    int intensity;
 
     public PSM(String scan, String peptide) {
         this.scan = scan;
@@ -20,7 +20,7 @@ public class PSM {
 
     }
 
-    public PSM(String scan, String peptide, double intensity) {
+    public PSM(String scan, String peptide, int intensity) {
         this.scan = scan;
         this.peptide = peptide;
         this.intensity = intensity;
@@ -42,7 +42,7 @@ public class PSM {
         this.ionScores = ionScores;
     }
 
-    public double getIntensity() {
+    public int getIntensity() {
         return intensity;
     }
 }
