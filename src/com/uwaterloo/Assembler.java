@@ -15,9 +15,9 @@ public class Assembler {
     public void process() {
         String dir = "D:\\Hao\\data\\for_analysis\\polyclonalAssemblerData\\";
         dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
-        //dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_46\\";
-        dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
-        //dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_46\\";
+        dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_46\\";
+        //dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
+        dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_62\\";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_54\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
@@ -33,7 +33,7 @@ public class Assembler {
         templateFasta = dir + "ab19001.template_top8.fasta";
         //templateFasta = dir + "Waters_mAB.template_top4.fasta";
         //templateFasta = dir + "ab19001.5enzymes.template_top8.fasta";
-        //templateFasta = dir + "candidate_template2.fasta";
+        templateFasta = dir + "candidate_template2.fasta";
         //templateFasta = dir + "Nuno.2016.heavy.candidate.template1.fasta";
         TemplatesLoader loader = new TemplatesLoader();
         List<Template> templateList = loader.loadTemplateFasta(templateFasta);
@@ -57,11 +57,16 @@ public class Assembler {
             //break;
         }
 
+        int min_template_length = 200;  //If a template length is shorter than the min_length, don't output it.
 
         for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
             List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
             String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
             for (int i = 0; i < candidateTemplates.size(); i++) {
+                //Only export template longer than min_template_length to keep only heavy or light chain. Delete fragments.
+                if (candidateTemplates.get(i).length < min_template_length) {
+                    continue;
+                }
                 System.out.println(">can" + (i + 1) + "_" + templateAccession);
                 System.out.println(new String(candidateTemplates.get(i)));
             }
@@ -86,6 +91,28 @@ public class Assembler {
             }
         }
     }
+    /* Trim the C end of candidate template if no reads covered the C end */
+    private void trimTemplateCEnd(TemplateHooked aTemplateHooked, List<char[]> topCandidateTemplates) {
+        int pos = 0;
+        while (pos < aTemplateHooked.getSeq().length) {
+            if (aTemplateHooked.getMappedScanList().get(pos).size() > 0) {
+                break;
+            }
+            pos++;
+        }
+
+        if (pos == 0) {
+            return;
+        }
+        for (int i = 0; i < topCandidateTemplates.size(); i++) {
+            int length = topCandidateTemplates.get(i).length - pos;
+            char[] newCandidate = new char[length];
+            for (int start = 0; start < length; start++) {
+                newCandidate[start] = topCandidateTemplates.get(i)[start + pos];
+            }
+            topCandidateTemplates.set(i, newCandidate);
+        }
+    }
 
     private List<char[]> findCandidateForOneTemplate(TemplateHooked aTemplateHooked, int templateId,
                                              ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList) {
@@ -98,11 +125,15 @@ public class Assembler {
         //  printMutationsOnTemplate(mutationsOnTemplateList);
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder(mutationsOnTemplateList);
-        List<char[]> top2CandidateTemplates = templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked, scanPSMMap);
+        List<char[]> topCandidateTemplates = templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked, scanPSMMap);
 
-        return top2CandidateTemplates;
+        trimTemplateCEnd(aTemplateHooked, topCandidateTemplates);
+
+        return topCandidateTemplates;
 
     }
+
+
 
     private void printMutationsOnTemplate(List<HashMap<List<Integer>, List<String>>> mutationsOnTemplateList) {
         for (int i = 0; i < mutationsOnTemplateList.size(); i++) {

@@ -547,6 +547,12 @@ public class TemplateCandidateBuilder {
                         extendedPatterns.get(extendedPattern).setFreq(extendedPatterns.get(extendedPattern).getFreq() + 1);
                         extendedPatterns.get(extendedPattern).setScore(extendedPattern.getScore() +
                                 extendedPatterns.get(extendedPattern).getScore());
+                        //The extendedPattern only contain one intensity in its intensitySet
+                        long intensity = extendedPattern.getIntensitySet().iterator().next();
+                        //If the intensity has not appeared in extendedPatterns, add it to the intensity set
+                        if (!extendedPatterns.get(extendedPattern).getIntensitySet().contains(intensity)) {
+                            extendedPatterns.get(extendedPattern).getIntensitySet().add(intensity);
+                        }
                     } else {
                         extendedPatterns.put(extendedPattern, extendedPattern);
                     }
@@ -569,12 +575,18 @@ public class TemplateCandidateBuilder {
                     List<Integer> posList = getPosListInRange(posArray, start, end);
                     String AAs = extractAAs(subPosList, psmAligned).getAAs();
                     if (AAs.equals(pattern.getAAs())) {
-                        MutationsPattern extendedPattern =  extractAAs(posList, psmAligned);;
+                        MutationsPattern extendedPattern =  extractAAs(posList, psmAligned);
                         if (extendedPatterns.containsKey(extendedPattern)) {
                             //Update the freq and score
                             extendedPatterns.get(extendedPattern).setFreq(extendedPatterns.get(extendedPattern).getFreq() + 1);
                             extendedPatterns.get(extendedPattern).setScore(extendedPattern.getScore() +
                                         extendedPatterns.get(extendedPattern).getScore());
+                            //The extendedPattern only contain one intensity in its intensitySet
+                            long intensity = extendedPattern.getIntensitySet().iterator().next();
+                            //If the intensity has not appeared in extendedPatterns, add it to the intensity set
+                            if (!extendedPatterns.get(extendedPattern).getIntensitySet().contains(intensity)) {
+                                extendedPatterns.get(extendedPattern).getIntensitySet().add(intensity);
+                            }
                         } else {
                             extendedPatterns.put(extendedPattern, extendedPattern);
                         }
@@ -622,7 +634,7 @@ public class TemplateCandidateBuilder {
                     if (!variationsPerPos.containsKey(AApos)) {
                         List<MutationsPattern> patternList = new ArrayList<>();
                         MutationsPattern AAPattern = new MutationsPattern(aPosList, str, pattern.getFreq(),
-                                pattern.getScore() / pattern.getAAs().length());
+                                pattern.getScore() / pattern.getAAs().length(), pattern.getIntensitySet());
                         patternList.add(AAPattern);
                         variationsPerPos.put(AApos, patternList);
                     } else {
@@ -637,7 +649,7 @@ public class TemplateCandidateBuilder {
                         }
                         if (!AAexist) {
                             patternList.add(new MutationsPattern(aPosList, str, pattern.getFreq(),
-                                    pattern.getScore() / pattern.getAAs().length()));
+                                    pattern.getScore() / pattern.getAAs().length(), pattern.getIntensitySet()));
                         }
                         variationsPerPos.put(AApos, patternList);
                     }
@@ -682,7 +694,10 @@ public class TemplateCandidateBuilder {
             extractedAAs += AAs[pos - start];
             score += scores[pos - start];
         }
-        MutationsPattern extendedPattern = new MutationsPattern(posList, extractedAAs, 1, score);
+
+        Set<Long> intensitySet = new HashSet<>();
+        intensitySet.add((long) psmAligned.getIntensity());
+        MutationsPattern extendedPattern = new MutationsPattern(posList, extractedAAs, 1, score, intensitySet);
         return extendedPattern;
     }
 
@@ -764,6 +779,12 @@ public class TemplateCandidateBuilder {
                                                                     templateHooked.getSeq(), ratio_thresh);
         printMutationsAlongPos(significantAAsPerPos);
 
+        /* Sum up the intensity for each variation of each position. If an intensity appears multiple times,
+            they might be from the same feature.  Then it should be counted only once.
+         */
+        sumIntensitySet(significantAAsPerPos);
+ //       printIntensitySet(significantAAsPerPos);
+
         /*
         List<MutationsPattern> filteredExtendedMutations = filterSignificantMutations(extendedMutations,
                                                                                 significantAAsPerPos);
@@ -822,8 +843,16 @@ public class TemplateCandidateBuilder {
             char[] candidateTemplate1 = templateCandidate.clone();
             char[] candidateTemplate2 = templateCandidate.clone();
 
-            changeCandidateTemplate(candidateTemplate1, significantAAsPerPos);
-            changeCandidateTemplate(candidateTemplate2, significantAAsPerPos);
+            boolean useTopScoreNotIntensity = true;
+            if (useTopScoreNotIntensity) {
+                //Choose mutation according to higher score
+                changeCandidateTemplateAccordMaxScore(candidateTemplate1, significantAAsPerPos);
+                changeCandidateTemplateAccordMaxScore(candidateTemplate2, significantAAsPerPos);
+            } else {
+                //Choose mutation according to higher intensity
+                changeCandidateTemplateAccordMaxIntensity(candidateTemplate1, significantAAsPerPos);
+                changeCandidateTemplateAccordMaxIntensity(candidateTemplate2, significantAAsPerPos);
+            }
 
             if (!java.util.Arrays.equals(templateCandidate, candidateTemplate1)) {
                 candidateTemplates.add(candidateTemplate1);
@@ -848,7 +877,43 @@ public class TemplateCandidateBuilder {
 
     }
 
-    private void changeCandidateTemplate(char[] candidateTemplate, TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
+    private void sumIntensitySet(TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
+        for (int pos : significantAAsPerPos.keySet()) {
+            for (MutationsPattern pattern : significantAAsPerPos.get(pos)) {
+                Set<Long> intensitySet = pattern.getIntensitySet();
+                long sumIntensity = 0;
+                for (long intensity : intensitySet) {
+                    sumIntensity += intensity;
+                }
+                intensitySet = new HashSet<Long>();
+                intensitySet.add(sumIntensity);
+
+                pattern.setIntensitySet(intensitySet);
+                //System.out.println(pos + "," + pattern.getAAs() + "," + sumIntensity);
+            }
+        }
+    }
+
+    private void printIntensitySet(TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
+        for (int pos : significantAAsPerPos.keySet()) {
+            for (MutationsPattern pattern : significantAAsPerPos.get(pos)) {
+                Set<Long> intensitySet = pattern.getIntensitySet();
+                /*
+                long sumIntensity = 0;
+                for (int intensity : intensitySet) {
+                    sumIntensity += intensity;
+                    System.out.println(pos + "," + pattern.getAAs() + "," + intensity);
+                }
+                */
+                if (intensitySet.size() > 1) {
+                    System.err.println("intensity set size larger than 1!");
+                }
+                System.out.println(pos + "," + pattern.getAAs() + "," + intensitySet.iterator().next());
+            }
+        }
+    }
+
+    private void changeCandidateTemplateAccordMaxScore(char[] candidateTemplate, TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
         for (int pos : significantAAsPerPos.keySet()) {
             List<MutationsPattern> AAsList = significantAAsPerPos.get(pos);
 
@@ -862,6 +927,26 @@ public class TemplateCandidateBuilder {
             }
             candidateTemplate[pos] = patternWithMaxScore.getAAs().charAt(0);
             patternWithMaxScore.setScore(1);
+        }
+    }
+
+    private void changeCandidateTemplateAccordMaxIntensity(char[] candidateTemplate, TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
+        for (int pos : significantAAsPerPos.keySet()) {
+            List<MutationsPattern> AAsList = significantAAsPerPos.get(pos);
+
+            MutationsPattern patternWithMaxIntensity = AAsList.get(0);
+            long maxIntensity = patternWithMaxIntensity.getIntensitySet().iterator().next();
+            for (MutationsPattern AA : AAsList) {
+                if (AA.getIntensitySet().iterator().next() > maxIntensity) {
+                    patternWithMaxIntensity = AA;
+                    maxIntensity = AA.getIntensitySet().iterator().next();
+                }
+            }
+            candidateTemplate[pos] = patternWithMaxIntensity.getAAs().charAt(0);
+            Set<Long> intensitySet = new HashSet<>();
+            intensitySet.add((long) 1);
+            patternWithMaxIntensity.setIntensitySet(intensitySet);
+
         }
     }
 
