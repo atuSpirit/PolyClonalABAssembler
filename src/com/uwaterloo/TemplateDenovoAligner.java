@@ -192,12 +192,13 @@ public class TemplateDenovoAligner {
         for (TemplateHooked templateHooked : templateHookedList) {
             System.out.println("Template " + templateHooked.getTemplateAccession());
             for (int i = 0; i < templateHooked.getSeq().length; i++) {
-                if (templateHooked.getDnList().get(i).size() > 0) {
+                if (templateHooked.getDnList().get(i).size() > 10) {
                     String scanList = "";
                     for (DenovoAligned dnA : templateHooked.getDnList().get(i)) {
                         scanList += dnA.dnScan + " ";
                     }
-                    System.out.println("pos " + i + " dn num: " + templateHooked.getDnList().get(i).size() + " " +  scanList);
+                    System.out.println("pos " + i + " db num: " + templateHooked.getMappedScanList().get(i).size() +
+                            " dn num: " + templateHooked.getDnList().get(i).size()  + " " + scanList);
                 }
             }
         }

@@ -76,7 +76,6 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
             return false;
         }
 
-        /* Currently the hash is used to identify different template pos for same dn
         if (!dnScan.equals(dnAligned.dnScan)) {
             return false;
         }
@@ -86,7 +85,7 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
         if (dnEnd != dnAligned.dnEnd) {
             return false;
         }
-        */
+
         return true;
     }
 
@@ -97,8 +96,13 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
         result = prime * result + templateId;
         result = prime * result + tStart;
         result = prime * result + tEnd;
-//        result = prime * result + dnStart;
-//        result = prime * result + dnEnd;
+        result = prime * result + dnStart;
+        result = prime * result + dnEnd;
+        result = prime * result;
+        char[] chars = dnScan.toCharArray();
+        for (char c : chars) {
+            result += c;
+        }
 
         return result;
     }
