@@ -7,16 +7,16 @@ public class TemplateHooked extends Template {
     ArrayList<ArrayList<String>> mappedScanList;   //The list of scans mapped to each position of the template.
     ArrayList<ArrayList<PSMAligned>> dbList;
     ArrayList<ArrayList<PSMAligned>> spiderList;
-    //ToDo  add arrayOfDenovoAligned.
+    ArrayList<ArrayList<DenovoAligned>> dnList;
 
     public TemplateHooked(Template template) {
         super(template.getTemplateId(), template.getTemplateAccession(), template.getSeq());
         this.mappedScanList = new ArrayList<>();
         this.dbList = new ArrayList<>();
         this.spiderList = new ArrayList<>();
+        this.dnList = new ArrayList<>();
         initializeAlignList(this.seq.length);
     }
-
 
     /* Initialize the scanList, dblist, spiderlist to have the size
         of template length
@@ -31,6 +31,9 @@ public class TemplateHooked extends Template {
 
             ArrayList<PSMAligned> spiderList = new ArrayList<>();
             this.spiderList.add(spiderList);
+
+            ArrayList<DenovoAligned> dnList = new ArrayList<>();
+            this.dnList.add(dnList);
         }
     }
 
@@ -46,4 +49,7 @@ public class TemplateHooked extends Template {
         return this.mappedScanList;
     }
 
+    public ArrayList<ArrayList<DenovoAligned>> getDnList() {
+        return dnList;
+    }
 }

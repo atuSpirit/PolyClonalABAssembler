@@ -843,7 +843,7 @@ public class TemplateCandidateBuilder {
             char[] candidateTemplate1 = templateCandidate.clone();
             char[] candidateTemplate2 = templateCandidate.clone();
 
-            boolean useTopScoreNotIntensity = true;
+            boolean useTopScoreNotIntensity = false;    //true use score, false use intensity
             if (useTopScoreNotIntensity) {
                 //Choose mutation according to higher score
                 changeCandidateTemplateAccordMaxScore(candidateTemplate1, significantAAsPerPos);
