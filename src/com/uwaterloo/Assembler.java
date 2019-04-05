@@ -16,6 +16,7 @@ public class Assembler {
         dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_46\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_33\\";
+        dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_70\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
@@ -61,7 +62,9 @@ public class Assembler {
 
         //Export candidate templates together with contaminant sequences as a fasta file
         String contaminantFile = "D:\\Hao\\database\\contaminants.fasta";
+        contaminantFile = "/Users/hao/data/contaminants.fasta";
         String candidateTemplateWithContaminant = "D:\\Hao\\result\\database\\candidate_template_with_contaminant.fasta";
+        candidateTemplateWithContaminant = "/Users/hao/data/candidate_template_with_contaminant.fasta";
         int min_template_length = 0;  //If a template length is shorter than the min_length, don't output it.
 
         exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);

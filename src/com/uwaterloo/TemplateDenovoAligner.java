@@ -7,10 +7,24 @@ import java.util.*;
  */
 public class TemplateDenovoAligner {
     List<DenovoOnly> denovoOnlyList;
+    HashMap<String, DenovoOnly> scanDnMap;
 
     public TemplateDenovoAligner(List<DenovoOnly> denovoOnlyList) {
         this.denovoOnlyList = denovoOnlyList;
+        this.scanDnMap = buildScanDnMap();
         //this.denovoKmerIndexTable = new Hashtable<>();
+    }
+
+    /**
+     * Build a map between the scan number and the DenovoOnly object.
+     * @return
+     */
+    private HashMap<String, DenovoOnly> buildScanDnMap() {
+        HashMap<String, DenovoOnly> scanDnMap = new HashMap<>();
+        for (DenovoOnly dn : denovoOnlyList) {
+            scanDnMap.put(dn.getScan(), dn);
+        }
+        return scanDnMap;
     }
 
     /**
@@ -110,11 +124,13 @@ public class TemplateDenovoAligner {
         int leftTemp = posOnTemplate - 1;
         int leftDn = dnPos - 1;
         while ((leftDn >= 0) && (leftTemp >= 0)) {
-            if (templateSeq[leftTemp] != dnSeq[leftDn]) {
-                break;
-            } else {
+            if ((templateSeq[leftTemp] == dnSeq[leftDn]) ||
+                    ((templateSeq[leftTemp] == 'I') && (dnSeq[leftDn] == 'L')) ||
+                    ((templateSeq[leftTemp] == 'L') && (dnSeq[leftDn] == 'I'))) {
                 leftTemp--;
                 leftDn--;
+            } else {
+                break;
             }
         }
 
@@ -122,11 +138,13 @@ public class TemplateDenovoAligner {
         int rightTemp = posOnTemplate + kmerSize - 1;
         int rightDn = dnPos + kmerSize - 1;
         while ((rightTemp < templateSeq.length) && (rightDn < dnSeq.length)) {
-            if (templateSeq[rightTemp] != dnSeq[rightDn]) {
-                break;
-            } else {
+            if ((templateSeq[rightTemp] != dnSeq[rightDn]) ||
+                ((templateSeq[rightTemp] == 'I') && (dnSeq[rightDn] == 'L')) ||
+                    ((templateSeq[rightTemp] == 'L') && (dnSeq[rightDn] == 'I'))) {
                 rightTemp++;
                 rightDn++;
+            } else {
+                break;
             }
         }
 
@@ -188,23 +206,43 @@ public class TemplateDenovoAligner {
                 }
             }
         }
+        printAlignedDn(templateHookedList, sortedDnAlignListMap);
 
+    }
+
+    private void printAlignedDn(List<TemplateHooked> templateHookedList, Hashtable<String, List<DenovoAligned>> sortedAlignListMap) {
         for (TemplateHooked templateHooked : templateHookedList) {
             System.out.println("Template " + templateHooked.getTemplateAccession());
             for (int i = 0; i < templateHooked.getSeq().length; i++) {
-                if (templateHooked.getDnList().get(i).size() > 10) {
+                if (templateHooked.getDnList().get(i).size() >= 10) {
                     String scanList = "";
+                    int minStart = 500;
                     for (DenovoAligned dnA : templateHooked.getDnList().get(i)) {
                         scanList += dnA.dnScan + " ";
+                        int currentStart = dnA.gettStart() - dnA.getDnStart();
+                        minStart = currentStart < minStart ? currentStart : minStart;
                     }
                     System.out.println("pos " + i + " db num: " + templateHooked.getMappedScanList().get(i).size() +
                             " dn num: " + templateHooked.getDnList().get(i).size()  + " " + scanList);
+
+                    for (DenovoAligned dnA : templateHooked.getDnList().get(i)) {
+                        String prefix = "";
+                        for (int j = 0; j <= (dnA.gettStart() - dnA.getDnStart() - minStart); j++) {
+                            prefix += " ";
+                        }
+                        System.out.print(prefix);
+                        System.out.print(scanDnMap.get(dnA.getDnScan()).getAAs());
+                        System.out.println("  " + dnA.toString());
+                    }
+
                 }
             }
         }
     }
 
     public void alignDenovoOnlyToTemplate(List<TemplateHooked> templateHookedList, short kmerSize) {
+
+
         Hashtable<String, List<KmerPosition>> denovoKmerIndexTable = buildKmerIndexTable(kmerSize);
         List<DenovoAligned> denovoAlignedList = new ArrayList<>();
         for (TemplateHooked templateHooked : templateHookedList) {

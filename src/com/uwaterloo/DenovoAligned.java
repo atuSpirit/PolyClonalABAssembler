@@ -110,7 +110,7 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
     @Override
     public String toString() {
         String dnAlignStr = templateId + " " + tStart + " " + tEnd + " " +
-                dnScan + " " + dnStart + " " + dnEnd;
+                dnScan + " " + dnStart + " " + dnEnd + " " + score;
         return dnAlignStr;
     }
 }
