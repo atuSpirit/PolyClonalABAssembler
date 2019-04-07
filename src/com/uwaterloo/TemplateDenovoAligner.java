@@ -138,7 +138,7 @@ public class TemplateDenovoAligner {
         int rightTemp = posOnTemplate + kmerSize - 1;
         int rightDn = dnPos + kmerSize - 1;
         while ((rightTemp < templateSeq.length) && (rightDn < dnSeq.length)) {
-            if ((templateSeq[rightTemp] != dnSeq[rightDn]) ||
+            if ((templateSeq[rightTemp] == dnSeq[rightDn]) ||
                 ((templateSeq[rightTemp] == 'I') && (dnSeq[rightDn] == 'L')) ||
                     ((templateSeq[rightTemp] == 'L') && (dnSeq[rightDn] == 'I'))) {
                 rightTemp++;
@@ -155,8 +155,8 @@ public class TemplateDenovoAligner {
                 denovoOnly.getScan(), (leftDn + 1), (rightDn - 1), score);
     }
 
-    private Hashtable<String, List<DenovoAligned>> buildSortAlignList(List<DenovoAligned> denovoAlignedList) {
-        Hashtable<String, List<DenovoAligned>> dnAlignMap = new Hashtable<>();
+    private HashMap<String, List<DenovoAligned>> buildSortAlignList(List<DenovoAligned> denovoAlignedList) {
+        HashMap<String, List<DenovoAligned>> dnAlignMap = new HashMap<>();
 
         //For each denovo only has overlap with template, set a list of aligned info with this scan
         for (DenovoAligned dnAligned : denovoAlignedList) {
@@ -178,43 +178,93 @@ public class TemplateDenovoAligner {
     }
 
     /**
-     * According to sortedDnAlignList, for each denovo only, attach the de novo
-     * only peptide to the template position with highest score. If there are
-     * multiple location with same score, attach the dn to all of them.
-     * @param templateHookedList A list of templateHooked with dnList to be added.
-     * @param sortedDnAlignListMap A hashmap <dnScan, sortedDnAlignedList>
+     * According to sortedDnAlignList, build a new scanDnAlignListMap.
+     * For each denovo only, only keep the alignment with highest score.
+     * If there are multiple location with same score, attach the dn to
+     * all of them.
+     * @param sortedDnAlignListMap
+     * @return
      */
-    private void assignDnToTemplate(List<TemplateHooked> templateHookedList,
-                                    Hashtable<String, List<DenovoAligned>> sortedDnAlignListMap) {
+    private HashMap<String, List<DenovoAligned>> extractDnAlignListWithMaxScore(HashMap<String, List<DenovoAligned>> sortedDnAlignListMap) {
+        HashMap<String, List<DenovoAligned>> scanDnAlignListMap = new HashMap<>();
         for (String scan : sortedDnAlignListMap.keySet()) {
             List<DenovoAligned> dnAlignedList = sortedDnAlignListMap.get(scan);
             int maxScore = dnAlignedList.get(0).getScore();
+            List<DenovoAligned> denovoAlignedListWithMaxScore = new ArrayList<>();
             for (DenovoAligned dnAligned : dnAlignedList) {
                 //Attach dnAligned to template positions with maxScore
                 if (dnAligned.getScore() == maxScore) {
-                   // System.out.println(dnAligned);
-                    int templateId = dnAligned.getTemplateId();
-                    int tStart = dnAligned.gettStart();
-                    int tEnd = dnAligned.gettEnd();
-
-                    //Attache the dnAlign to all positions it covered
-                    for (int i = tStart; i <= tEnd; i++) {
-                        templateHookedList.get(templateId).getDnList().get(i).add(dnAligned);
-                    }
+                    denovoAlignedListWithMaxScore.add(dnAligned);
                 } else {
                     break;
                 }
             }
+            scanDnAlignListMap.put(scan, denovoAlignedListWithMaxScore);
         }
-        printAlignedDn(templateHookedList, sortedDnAlignListMap);
-
+        return scanDnAlignListMap;
     }
 
-    private void printAlignedDn(List<TemplateHooked> templateHookedList, Hashtable<String, List<DenovoAligned>> sortedAlignListMap) {
+    /**
+     * According to scanDnAlignListMap, for each denovo only, attach the de novo
+     * only peptide to the template position with highest score. If there are
+     * multiple location with same score, attach the dn to all of them.
+     * @param templateHookedList A list of templateHooked with dnList to be added.
+     * @param scanDnAlignListWithMaxScoreMap A hashmap <dnScan, dnAlignedListWithMaxScore>
+     */
+    private void hookDnToTemplate(List<TemplateHooked> templateHookedList,
+                                  HashMap<String, List<DenovoAligned>> scanDnAlignListWithMaxScoreMap) {
+        for (String scan : scanDnAlignListWithMaxScoreMap.keySet()) {
+            List<DenovoAligned> dnAlignedList = scanDnAlignListWithMaxScoreMap.get(scan);
+            for (DenovoAligned dnAligned : dnAlignedList) {
+                int templateId = dnAligned.getTemplateId();
+                /* Except hooked to same region with the template.  The denovo only
+                    should also be hooked to unmatched region, so that the denovo sequence
+                    can count on major vote together with the template region.
+                 */
+                int tStart = dnAligned.gettStart();
+                int tEnd = dnAligned.gettEnd();
+
+                int dnLength = scanDnMap.get(dnAligned.getDnScan()).getLength();
+
+                if (dnAligned.getDnStart() == 0) {
+                    //If denovo extend template to right
+                    tEnd = tStart + dnLength - 1;
+                    int templateLength = templateHookedList.get(templateId).getSeq().length;
+                    tEnd = tEnd < templateLength ? tEnd : (templateLength - 1);
+                } else {
+                    //If denovo extend template to left
+                    tStart = tEnd - dnLength + 1;
+                    tStart = tStart > 0 ? tStart : 0;
+                }
+                //Attache the dnAlign to all positions it covered
+                for (int i = tStart; i <= tEnd; i++) {
+                    templateHookedList.get(templateId).getDnList().get(i).add(dnAligned);
+                }
+            }
+        }
+    }
+
+    /**
+     * Print denovo only peptides according to their alignment to the template.
+     * e.g.
+     * VTLGCLVKGYFHYSSL  2 138 147 F2:12912 0 9 656
+     *    GCLVKGYFHYSSL  2 141 147 F2:9316 0 6 436
+     *      LVKGYFHYSSL  2 143 147 F2:8159 0 4 374
+     * VTLGCLVKGYFWNPVTL  2 138 147 F2:14482 0 9 634
+     * @param templateHookedList
+     */
+    private void printAlignedDn(List<TemplateHooked> templateHookedList) {
         for (TemplateHooked templateHooked : templateHookedList) {
             System.out.println("Template " + templateHooked.getTemplateAccession());
             for (int i = 0; i < templateHooked.getSeq().length; i++) {
-                if (templateHooked.getDnList().get(i).size() >= 10) {
+                int dnSize = templateHooked.getDnList().get(i).size();
+                int psmSize = templateHooked.getMappedScanList().get(i).size();
+                if (dnSize == 0) {
+                    continue;
+                }
+                float psmDnRatio = ((float) psmSize) / dnSize;
+//                if (templateHooked.getDnList().get(i).size() >= 20) {
+                if (psmDnRatio < 2) {
                     String scanList = "";
                     int minStart = 500;
                     for (DenovoAligned dnA : templateHooked.getDnList().get(i)) {
@@ -222,7 +272,7 @@ public class TemplateDenovoAligner {
                         int currentStart = dnA.gettStart() - dnA.getDnStart();
                         minStart = currentStart < minStart ? currentStart : minStart;
                     }
-                    System.out.println("pos " + i + " db num: " + templateHooked.getMappedScanList().get(i).size() +
+                    System.out.println("pos " + i + "ratio: " + psmDnRatio + " db num: " + templateHooked.getMappedScanList().get(i).size() +
                             " dn num: " + templateHooked.getDnList().get(i).size()  + " " + scanList);
 
                     for (DenovoAligned dnA : templateHooked.getDnList().get(i)) {
@@ -240,19 +290,87 @@ public class TemplateDenovoAligner {
         }
     }
 
+    private HashMap<String, List<DenovoAligned>> getDnCanExtendRight(HashMap<String, List<DenovoAligned>> scanDnAlignListMap) {
+        HashMap<String, List<DenovoAligned>> dnCanExtendRightMap= new HashMap<>();
+        for (String scan : scanDnAlignListMap.keySet()) {
+            List<DenovoAligned> dnAlignList = scanDnAlignListMap.get(scan);
+            List<DenovoAligned> dnAlignCanExtend = new ArrayList<>();
+            for (DenovoAligned dnAlign : dnAlignList) {
+                if (dnAlign.getDnStart() == 0) {
+                    dnAlignCanExtend.add(dnAlign);
+                }
+            }
+            if (dnAlignCanExtend.size() > 0) {
+                dnCanExtendRightMap.put(scan, dnAlignCanExtend);
+            }
+        }
+        return dnCanExtendRightMap;
+    }
+
+    private HashMap<String, List<DenovoAligned>> getDnCanExtendLeft(HashMap<String, List<DenovoAligned>> scanDnAlignListMap,
+                                                                    HashMap<String, DenovoOnly> scanDnMap) {
+        HashMap<String, List<DenovoAligned>> dnCanExtendRightMap= new HashMap<>();
+        for (String scan : scanDnAlignListMap.keySet()) {
+            List<DenovoAligned> dnAlignList = scanDnAlignListMap.get(scan);
+            List<DenovoAligned> dnAlignCanExtend = new ArrayList<>();
+            for (DenovoAligned dnAlign : dnAlignList) {
+                if (dnAlign.getDnEnd() == (scanDnMap.get(dnAlign.getDnScan()).getLength() - 1)) {
+                    dnAlignCanExtend.add(dnAlign);
+                }
+            }
+            if (dnAlignCanExtend.size() > 0) {
+                dnCanExtendRightMap.put(scan, dnAlignCanExtend);
+            }
+        }
+        return dnCanExtendRightMap;
+    }
+
+    /**
+     * If a position's dn num > thresh, print both its db num and dn num on that position
+     * @param templateHookedList
+     */
+    private void printTemplateDbvsDn(List<TemplateHooked> templateHookedList) {
+        int thresh = 0;
+        for (TemplateHooked templateHooked : templateHookedList) {
+            int seqLength = templateHooked.getSeq().length;
+            System.out.println(templateHooked.getTemplateAccession());
+            System.out.println("Pos,Db,Dn,Ratio");
+            for (int i = 0; i < seqLength; i++) {
+                if (templateHooked.getDnList().get(i).size() > thresh) {
+                    float ratio = ((float) templateHooked.getMappedScanList().get(i).size()) / templateHooked.getDnList().get(i).size();
+                    System.out.println(i + "," + templateHooked.getMappedScanList().get(i).size() + "," +
+                            templateHooked.getDnList().get(i).size() + "," + ratio);
+                }
+            }
+        }
+    }
+
     public void alignDenovoOnlyToTemplate(List<TemplateHooked> templateHookedList, short kmerSize) {
-
-
         Hashtable<String, List<KmerPosition>> denovoKmerIndexTable = buildKmerIndexTable(kmerSize);
         List<DenovoAligned> denovoAlignedList = new ArrayList<>();
         for (TemplateHooked templateHooked : templateHookedList) {
             denovoAlignedList.addAll(scanTemplate(templateHooked, kmerSize, denovoKmerIndexTable));
         }
         System.out.println("denovo align size: " + denovoAlignedList.size());
-        Hashtable<String, List<DenovoAligned>> sortedAlignListMap = buildSortAlignList(denovoAlignedList);
+        HashMap<String, List<DenovoAligned>> sortedAlignListMap = buildSortAlignList(denovoAlignedList);
         System.out.println("Remaining denovo only: " + sortedAlignListMap.size());
 
-        assignDnToTemplate(templateHookedList, sortedAlignListMap);
+        //For each denovo only, find its best matches to template
+        HashMap<String, List<DenovoAligned>> scanDnAlignMap = extractDnAlignListWithMaxScore(sortedAlignListMap);
+        //Hook the denovo only to the best matched template position
+        //hookDnToTemplate(templateHookedList, scanDnAlignMap);
+
+        //Find those dn whose left end are the same with the aligned template dnStart = 0
+
+        //Find those dn whose right end are the same with the aligned template  dnEnd = denovo length - 1.
+        HashMap<String, List<DenovoAligned>> dnExtendRight = getDnCanExtendRight(scanDnAlignMap);
+        hookDnToTemplate(templateHookedList, dnExtendRight);
+
+        HashMap<String, List<DenovoAligned>> dnExtendLeft = getDnCanExtendLeft(scanDnAlignMap, scanDnMap);
+        hookDnToTemplate(templateHookedList, dnExtendLeft);
+//        printTemplateDbvsDn(templateHookedList);
+        printAlignedDn(templateHookedList);
+
 
     }
 }
