@@ -670,6 +670,7 @@ public class TemplateCandidateBuilder {
             for (MutationsPattern pattern : patterns) {
                 scoreSum += pattern.getScore();
             }
+
             for (MutationsPattern pattern : patterns) {
                 if ((pattern.getScore() / scoreSum) >= ratio_thresh) {
                     sigPatterns.add(pattern);
@@ -825,7 +826,7 @@ public class TemplateCandidateBuilder {
         System.out.println("Generating candidate templates...");
         List<char[]> candidateTemplates = new ArrayList<>();
 
-        boolean homo = false;
+        boolean homo = true;
 
         if (homo) {
             //Apply homogeneous mutations to template to generate one candidate template

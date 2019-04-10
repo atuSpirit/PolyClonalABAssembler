@@ -57,8 +57,14 @@ public class Assembler {
         short kmerSize = 6;
         dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
-        //Generating candidate templates
-        generateCandidateTemplates(templateHookedList, listOfPSMAlignedList);
+        boolean onlyUseDenovo = false;
+        if (!onlyUseDenovo) {
+            //Generating candidate templates
+            generateCandidateTemplates(templateHookedList, listOfPSMAlignedList);
+        } else {
+            float dbDnRatioThresh = 1.0f;
+            dnAligner.majorityVoteInDnDominantRegion(templateHookedList, dbDnRatioThresh);;
+        }
 
         //Export candidate templates together with contaminant sequences as a fasta file
         String contaminantFile = "D:\\Hao\\database\\contaminants.fasta";
