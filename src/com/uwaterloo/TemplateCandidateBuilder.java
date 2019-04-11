@@ -661,7 +661,7 @@ public class TemplateCandidateBuilder {
         System.out.println("Generating candidate templates...");
         List<char[]> candidateTemplates = new ArrayList<>();
 
-        boolean homo = true;
+        boolean homo = false;
 
         if (homo) {
             //Apply homogeneous mutations to template to generate one candidate template

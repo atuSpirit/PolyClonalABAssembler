@@ -15,7 +15,7 @@ public class Assembler {
         dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
         dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_46\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
-        dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_69\\";
+        dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_79\\";
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_70\\";
         String psmFile = dir + "DB search psm.csv";
@@ -138,7 +138,7 @@ public class Assembler {
      * @param psmList
      * @param scanIonScoresMap
      */
-    private void setIonScoresForPSMList(List<PSM> psmList, HashMap<String,short[]> scanIonScoresMap) {
+    public static void setIonScoresForPSMList(List<PSM> psmList, HashMap<String,short[]> scanIonScoresMap) {
         for (int i = 0; i < psmList.size(); i++) {
             String scan = psmList.get(i).getScan();
             if (scanIonScoresMap.containsKey(scan)) {
