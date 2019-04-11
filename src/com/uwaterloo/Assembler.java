@@ -15,7 +15,7 @@ public class Assembler {
         dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
         dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_46\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
-        dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_33\\";
+        dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_69\\";
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_70\\";
         String psmFile = dir + "DB search psm.csv";
@@ -57,11 +57,12 @@ public class Assembler {
         short kmerSize = 6;
         dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
-        boolean onlyUseDenovo = false;
-        if (!onlyUseDenovo) {
-            //Generating candidate templates
+        boolean useDenovo = false;
+        if (!useDenovo) {
+            //Generating candidate templates using DB and Spider PSMs
             generateCandidateTemplates(templateHookedList, listOfPSMAlignedList);
         } else {
+            //Generating candidate templates using denovo only results
             float dbDnRatioThresh = 1.0f;
             dnAligner.majorityVoteInDnDominantRegion(templateHookedList, dbDnRatioThresh);;
         }

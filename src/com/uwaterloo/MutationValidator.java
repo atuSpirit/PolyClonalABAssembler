@@ -129,6 +129,7 @@ public class MutationValidator {
             return null;
         }
 
+
         /* The following code are used for method using frequency
         // The frequency of significant patterns are extracted from PatternFreqTable and attached to pattern.
         List<String> sigMutationsWithFreqOnTemplate = attachFreqToSignificantPattern(significantMutatedPatternsOnTemplate,

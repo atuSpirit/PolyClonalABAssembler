@@ -43,58 +43,6 @@ public class TemplateCandidateBuilder {
         return mutationsSorted;
     }
 
-    /* For some pattern, they does not contain the consecutive position from the posList,
-        add the AA on template to them to make them consecutive for later procession.
-        For exmaple, pos List contain {18, 19, 27}, but one pattern only has {18, 27}.
-        Then the AA at 19 on template will be added to the middle.
-        This is wrong, because the middle AA could not same with that on template.  It should
-        be same as the AA on reads.
-     */
-    private TreeMap<Integer, List<MutationsPattern>> makePatternsConsecutive(TreeMap<Integer, List<MutationsPattern>> mutationSorted,
-                                                           List<Integer> posList, TemplateHooked templateHooked) {
-        int size = posList.size();
-        for (int startIndex = 0; startIndex < size; startIndex++) {
-            if (!mutationSorted.containsKey(posList.get(startIndex))) {
-                continue;
-            }
-            List<MutationsPattern> mutationsPatterns = mutationSorted.get(posList.get(startIndex));
-            List<MutationsPattern> processedMutationPatterns = new ArrayList<>();
-
-            /* Preprocess mutationPattern, insert template AA if needed */
-            for (MutationsPattern mutationsPattern : mutationsPatterns) {
-                List<Integer> subPosList = mutationsPattern.getPosList();
-                String pattern = "";
-                List<Integer> newSubPosList = new ArrayList<>();
-                int subPosListIndex = 0;
-                int posListIndex = startIndex + subPosListIndex;
-                while (subPosListIndex < subPosList.size()) {
-                    while (subPosList.get(subPosListIndex) > posList.get(posListIndex)) {
-                        newSubPosList.add(posList.get(posListIndex));
-                        pattern += templateHooked.getSeq()[posList.get(posListIndex)];
-                        posListIndex++;
-                    }
-                    pattern += mutationsPattern.AAs.charAt(subPosListIndex);
-                    newSubPosList.add(subPosList.get(subPosListIndex));
-                    subPosListIndex++;
-                    posListIndex++;
-                }
-
-                MutationsPattern newMutationPattern = new MutationsPattern(newSubPosList, pattern,
-                        mutationsPattern.getFreq(), mutationsPattern.getScore());
-                processedMutationPatterns.add(newMutationPattern);
-
-            }
-            mutationSorted.put(posList.get(startIndex), processedMutationPatterns);
-
-            /* Testing
-            System.out.println(posList.get(startIndex));
-            for (MutationsPattern mutationsPattern : processedMutationPatterns) {
-                System.out.println(mutationsPattern.toString());
-            }
-            */
-        }
-        return mutationSorted;
-    }
 
     private void printMutationsAlongPos(TreeMap<Integer, List<MutationsPattern>> posMutationMap) {
         for (int pos : posMutationMap.keySet()) {
@@ -106,128 +54,6 @@ public class TemplateCandidateBuilder {
         }
     }
 
-    /**
-     * Assemble mutation patterns according to overlaps on patterns.  However, it is not correct,
-     * because the adjacent pattern does not contain AA extracted, it might be different. For example,
-     * pattern1 and pattern2 overlap at pos i.  pattern1 [..., i-1, i], pattern2 [i, i+1...]. The AA[i-1] of
-     * pattern1 is not equals to AA[i-1] of reads containing pattern2.
-     *
-     * @param posArray
-     * @param mutationSorted
-     * @return
-     */
-    private List<MutationsPattern> assembleMutationPatterns(List<Integer> posArray,
-                                                            TreeMap<Integer, List<MutationsPattern>> mutationSorted) {
-        List<MutationsPattern> mutationContigList = new ArrayList<>();
-
-        int size = posArray.size();
-        int endPos = -1;
-        int contigNum = 0;
-        for (int i = 0; i < size; i++) {
-            int pos = posArray.get(i);
-            List<MutationsPattern> mutationsPatterns = mutationSorted.get(pos);
-
-            if (mutationsPatterns == null) {
-                continue;
-            }
-
-            if (pos > endPos) {
-                //There will be no overlap, add all new patterns starting from pos
-                for (MutationsPattern mutationsPattern : mutationsPatterns) {
-                    /*
-                    if (mutationsPattern.getPosList().size() == 1) {
-                        continue;
-                    }
-                    */
-                    mutationContigList.add(mutationsPattern);
-                    List<Integer> posList = mutationsPattern.getPosList();
-                    int lastPos = posList.get(posList.size() - 1);
-                    if (lastPos > endPos) {
-                        endPos = lastPos;
-                    }
-                }
-            } else {
-                //There will be overlap position. assemble patterns according to overlap
-                //Append overlapped patterns to mutationsPatternstoExtend, update the endPos
-                endPos = assemblePatternsByOverlapAA(mutationContigList, endPos,
-                        mutationSorted.get(pos));
-            }
-        }
-
-        //DEBUG
-        for (MutationsPattern mutationsPattern : mutationContigList) {
-            System.out.println(mutationsPattern.toString());
-        }
-        return mutationContigList;
-
-    }
-
-    /* need to be rewritten using reads covering */
-    private List<MutationsPattern> assembleMutationPatterns(List<Integer> posArray, TemplateHooked templateHooked,
-                                                            TreeMap<Integer, List<MutationsPattern>> extendedPatterns,
-                                                            TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
-        TreeMap<Integer, List<Vertex>> verticesList = buildVertice(posArray, significantAAsPerPos);
-
-
-
-
-        //TODO
-        return null;
-    }
-
-    /**
-     * According to the assembled mutation Contigs list, attach the indexes of mutationContigs covering pos to pos.
-     * @param mutationContigList The list of assembled mutation contigs
-     * @return a map of <pos, List<index of contigs covering the pos>
-     */
-    private TreeMap<Integer, Set<Integer>> buildPosAssembledMutationsMap(List<MutationsPattern> mutationContigList) {
-        /* Attach the index of mutationContigs to each position the pattern covers */
-        TreeMap<Integer, Set<Integer>> posMutationsMap = new TreeMap<>();
-        for (int index = 0; index < mutationContigList.size(); index++) {
-            List<Integer> posList = mutationContigList.get(index).getPosList();
-            for (int pos : posList) {
-                if (posMutationsMap.containsKey(pos)) {
-                    posMutationsMap.get(pos).add(index);
-                } else {
-                    Set<Integer> indexSet = new HashSet<Integer>();
-                    indexSet.add(index);
-                    posMutationsMap.put(pos, indexSet);
-                }
-            }
-        }
-
-        return posMutationsMap;
-    }
-
-    /**
-     * Pick the mutation contigs with highest frequency on each position. After adding the pattern with
-     * maximum freq to a list of contigs with highest freq, remove the pattern from posMutationMap. In this way,
-     * second call of this function will result a list of contigs with second highest freq.
-     * @param mutationContigList
-     * @param posMutationsMap
-     * @return a list of mutationContig whose freq are the most in the position.
-     *          The mutationContig with max freq is removed from posMutations Map.
-     */
-    private List<MutationsPattern> pickMuationContigsWithTopFreq(List<MutationsPattern> mutationContigList,
-                                                                 TreeMap<Integer, Set<Integer>> posMutationsMap) {
-        List<MutationsPattern> topMutationContigList = new ArrayList<>();
-        int preIndex = -1;
-        for (int pos : posMutationsMap.keySet()) {
-            Set<Integer> indexList = posMutationsMap.get(pos);
-            if (indexList.size() == 0) {
-                continue;
-            }
-            int maxIndex = indexOfMaxFreq(indexList, mutationContigList);
-
-            if (maxIndex != preIndex) {
-                topMutationContigList.add(mutationContigList.get(maxIndex));
-                preIndex = maxIndex;
-            }
-            posMutationsMap.get(pos).remove(maxIndex);
-        }
-
-        return topMutationContigList;
-    }
 
 
     private int indexOfMaxFreq(Set<Integer> indexList, List<MutationsPattern> mutationCongigList) {
@@ -243,105 +69,6 @@ public class TemplateCandidateBuilder {
         return maxIndex;
     }
 
-    /**
-     * Append patterns in mutationsPatterns to mutationsPatternsToExtend according to overlap.
-     * @param mutationContigList current mutation contig list
-     * @param mutationsPatterns The mutation patterns to be appended to existing contigs in mutationContigList
-     *                          or to be added as a new contig if no overlapping
-     * @return The last position in succMutPatList. The mutationsPatternsToExtend are updated
-     * to the assembled pattern list
-     */
-    private int assemblePatternsByOverlapAA(List<MutationsPattern> mutationContigList, int endPos,
-                                                               List<MutationsPattern> mutationsPatterns) {
-        //Get the latest contig to extend
-        List<MutationsPattern> mutationsPatternsToExtend = mutationContigList;
-
-        for (MutationsPattern succMutPat : mutationsPatterns) {
-            List<Integer> succPosList = succMutPat.getPosList();
-            //Does not consider pattern of size one
-            if (succPosList.size() == 1) {
-                continue;
-            }
-
-            if (succPosList.get(succPosList.size() - 1) > endPos) {
-                endPos = succPosList.get(succPosList.size() - 1);
-            }
-            boolean isOverlap = false;
-            for (MutationsPattern preMutPat : mutationsPatternsToExtend) {
-                int index = overlapStart(preMutPat, succMutPat);
-                //If overlapped, append the succMutPat to existing contigs
-                if (index != -1) {
-                    isOverlap = true;
-                    if (succMutPat.getFreq() > preMutPat.getFreq()) {
-                        preMutPat.setFreq(succMutPat.getFreq());
-                    }
-
-                    List<Integer> prePosList = preMutPat.getPosList();
-                    //If succMatPattern is a substring of preMutPat, no need to update preMutPattern
-                    if (prePosList.get(prePosList.size() - 1) > succPosList.get(succPosList.size() - 1)) {
-                        continue;
-                    }
-
-                    preMutPat.setAAs(preMutPat.getAAs().substring(0, index) + succMutPat.getAAs());
-                    List<Integer> newPosList = new ArrayList<>();
-                    newPosList.addAll(prePosList.subList(0, index));
-                    newPosList.addAll(succPosList);
-                    preMutPat.setPosList(newPosList);
-
-//                    prePosList = prePosList.subList(0, index);
-//                    prePosList.addAll(succPosList);
-                }
-            }
-            //If succMat does not overlap with any patterns in mutationsPatternstoExtend,
-            //it should be added to contigList as a new contig
-            if (!isOverlap) {
-                mutationContigList.add(succMutPat);
-            }
-        }
-
-        return endPos;
-
-    }
-
-    /**
-     * If preMutPat and succMutPat is overlapped, return the first index of overlapping,
-     * otherwise return -1
-     * @param preMutPat
-     * @param succMutPat
-     * @return
-     */
-    private int overlapStart(MutationsPattern preMutPat, MutationsPattern succMutPat) {
-        List<Integer> prePosList = preMutPat.getPosList();
-        List<Integer> succPosList = succMutPat.getPosList();
-        int overLapStart = -1;
-        boolean isOverlapped = false;
-
-       // System.out.println("Debug preMutPat " + preMutPat.getAAs() + " succMutPat: " + succMutPat.getAAs());
-        if (prePosList.get(prePosList.size()  - 1) < succPosList.get(0)) {
-            return -1;
-        }
-        int preIndex = 0;
-        int succIndex = 0;
-
-        while (preIndex < prePosList.size()) {
-            //There is a pos in prePosList == the first pos in succPosList
-            if (prePosList.get(preIndex) == succPosList.get(succIndex)) {
-                break;
-            }
-            preIndex++;
-        }
-        overLapStart = preIndex;
-        while ((preIndex < prePosList.size()) && (succIndex < succPosList.size())) {
-            if (preMutPat.getAAs().charAt(preIndex) != succMutPat.getAAs().charAt(succIndex)) {
-                return -1;
-            }
-            preIndex++;
-            succIndex++;
-        }
-
-
-        return overLapStart;
-    }
 
     /**
      * Generate new template sequence according to old template sequence and mutated patterns.
@@ -515,6 +242,7 @@ public class TemplateCandidateBuilder {
     }
 
     /**
+     * Will not used any more.
      *  According to spectra in templateHooked and posArray, extend the patterns to include adjacent positions in posArray.
      *  For example,
      *  18
@@ -527,6 +255,9 @@ public class TemplateCandidateBuilder {
                                                                     HashMap<String, PSMAligned> scanPSMMap) {
         Map<MutationsPattern, MutationsPattern> extendedPatterns = new HashMap<>();
         for (Integer pos : posArray) {
+            if (pos == 47) {
+                System.out.println("Debug in extendPatterns");
+            }
             //Extract all scans covering this position
             List<String> scanList = templateHooked.getMappedScanList().get(pos);
 
@@ -610,7 +341,71 @@ public class TemplateCandidateBuilder {
         return extendedPatternsMap;
     }
 
+
     /**
+     * Rewrite it to not to scan based on mutationPatterns.
+     * Examine each position in posArray.  For each position, extract all scans covering the position.
+     * For each unexamined scan, extract the pattern in posArray to extendPatterns.
+     * Since all scans covering the position are those scans containing confident score. Scans without
+     * significant mutation has been removed in MutationValidator. Since each mutation pattern
+     * is extracted from a scan based on posArray, it cannot be extended any more.
+     */
+    private TreeMap<Integer, List<MutationsPattern>> extendPatterns(List<Integer> posArray, TemplateHooked templateHooked,
+                                                                    HashMap<String, PSMAligned> scanPSMMap) {
+        Map<MutationsPattern, MutationsPattern> extendedPatterns = new HashMap<>();
+        Set<String> checkScanSet = new HashSet<>();
+        for (Integer pos : posArray) {
+            if (pos == 47) {
+                System.out.println("Debug in extendPatterns");
+            }
+            //Extract all scans covering this position
+            List<String> scanList = templateHooked.getMappedScanList().get(pos);
+
+            for (String scan : scanList) {
+                if (checkScanSet.contains(scan)) {
+                     continue;
+                }
+                PSMAligned psmAligned = scanPSMMap.get(scan);
+                int start = psmAligned.getStart();
+                int end = psmAligned.getEnd();
+
+                //Get the pos List of posArray in the range of this peptide
+                List<Integer> posList = getPosListInRange(posArray, start, end);
+
+                MutationsPattern extendedPattern =  extractAAs(posList, psmAligned);
+                if (extendedPatterns.containsKey(extendedPattern)) {
+                    //Update the freq and score
+                    extendedPatterns.get(extendedPattern).setFreq(extendedPatterns.get(extendedPattern).getFreq() + 1);
+                    extendedPatterns.get(extendedPattern).setScore(extendedPattern.getScore() +
+                            extendedPatterns.get(extendedPattern).getScore());
+                    //The extendedPattern only contain one intensity in its intensitySet
+                    long intensity = extendedPattern.getIntensitySet().iterator().next();
+                    //If the intensity has not appeared in extendedPatterns, add it to the intensity set
+                    if (!extendedPatterns.get(extendedPattern).getIntensitySet().contains(intensity)) {
+                        extendedPatterns.get(extendedPattern).getIntensitySet().add(intensity);
+                    }
+                } else {
+                    extendedPatterns.put(extendedPattern, extendedPattern);
+                }
+            }
+        }
+        //Storing the extendedPatterns according to their first position
+        TreeMap<Integer, List<MutationsPattern>> extendedPatternsMap = new TreeMap<>();
+        for (MutationsPattern extendedPattern : extendedPatterns.values()) {
+            int pos = extendedPattern.getPosList().get(0);
+            if (extendedPatternsMap.containsKey(pos)) {
+                extendedPatternsMap.get(pos).add(extendedPattern);
+            } else {
+                List<MutationsPattern> extendedPatternsList = new ArrayList<>();
+                extendedPatternsList.add(extendedPattern);
+                extendedPatternsMap.put(pos, extendedPatternsList);
+            }
+        }
+        return extendedPatternsMap;
+    }
+
+    /**
+     *
      * Based on the extended mutation patterns, extract frequency and scores of AAs in each position.
      * The frequency is the sum of the AA appears in extended patterns of this position.
      * The score is the sum of the score of the extended patterns containing AA divided by the length of the pattern.
@@ -659,6 +454,60 @@ public class TemplateCandidateBuilder {
         return variationsPerPos;
     }
 
+    /**
+     *
+     * Based on the extended mutation patterns, extract frequency and scores of AAs in each position.
+     * The frequency is the sum of the AA appears in extended patterns of this position.
+     * The score is the sum of the score of the extended patterns containing AA divided by the length of the pattern.
+     * @param extendedMutations the mutation patterns extended according to peptides
+     * @return mutationPattern list containing variations per pos
+     */
+    private TreeMap<Integer, List<MutationsPattern>> getVariationsPerPos(TreeMap<Integer, List<MutationsPattern>> extendedMutations,
+                                                                         HashMap<String, PSMAligned> scanPSMMap,
+                                                                         TemplateHooked templateHooked) {
+        TreeMap<Integer, List<MutationsPattern>> variationsPerPos = new TreeMap<>();
+    //    List<Integer> mutationPosList = getPosListFromPatterns(extendedMutations);
+        for (int pos : extendedMutations.keySet()) {
+            List<MutationsPattern> mutationsPatternList = extendedMutations.get(pos);
+            for (MutationsPattern pattern : mutationsPatternList) {
+                List<Integer> posList = pattern.getPosList();
+                //For a given pattern, extract the AA appearing in the pattern and put in corresponding mutation pattern
+                for (int i = 0; i < posList.size(); i++) {
+                    int AApos = posList.get(i);
+                    char AA = pattern.getAAs().charAt(i);
+                    List<Integer> aPosList = new ArrayList<>();
+                    aPosList.add(AApos);
+                    String str = String.valueOf(AA);
+
+                    if (!variationsPerPos.containsKey(AApos)) {
+                        List<MutationsPattern> patternList = new ArrayList<>();
+                        MutationsPattern AAPattern = new MutationsPattern(aPosList, str, pattern.getFreq(),
+                                pattern.getScore() / pattern.getAAs().length(), pattern.getIntensitySet());
+                        patternList.add(AAPattern);
+                        variationsPerPos.put(AApos, patternList);
+                    } else {
+                        List<MutationsPattern> patternList = variationsPerPos.get(AApos);
+                        boolean AAexist = false;
+                        for (MutationsPattern AAPattern : patternList) {
+                            if (AAPattern.getAAs().equals(str)) {
+                                AAPattern.setFreq(AAPattern.getFreq() + pattern.getFreq());
+                                AAPattern.setScore(AAPattern.getScore() + pattern.getScore() / pattern.getAAs().length());
+                                AAexist = true;
+                            }
+                        }
+                        if (!AAexist) {
+                            patternList.add(new MutationsPattern(aPosList, str, pattern.getFreq(),
+                                    pattern.getScore() / pattern.getAAs().length(), pattern.getIntensitySet()));
+                        }
+                        variationsPerPos.put(AApos, patternList);
+                    }
+                }
+            }
+        }
+        return variationsPerPos;
+    }
+
+
     /* Filter the AA under ratio_thresh. All pattern in sigAAsPerPos are a single AA */
     private TreeMap<Integer, List<MutationsPattern>> getSigVariationsPerPos(TreeMap<Integer, List<MutationsPattern>> AAsPerPos,
                                                                             char[] templateAAs, float ratio_thresh) {
@@ -684,7 +533,7 @@ public class TemplateCandidateBuilder {
         return sigAAsPerPos;
     }
 
-    /* Helper function to extract AAs in subPosList from AAs. */
+    /* Helper function to extract AAs, score, intensity information in subPosList from AAs. */
     private MutationsPattern extractAAs(List<Integer> posList, PSMAligned psmAligned) {
         char[] AAs = psmAligned.getAAs();
         int start = psmAligned.getStart();
@@ -738,35 +587,20 @@ public class TemplateCandidateBuilder {
     }
 
     public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap) {
+        System.out.println(templateHooked.getTemplateAccession());
         List<Integer> posArray = getPosSet();
         System.out.println(posArray.toString());
 
         //Build a map that the patterns covering a position will be linked to this position. So a pattern might be mapped to more than one position
         TreeMap<Integer, List<MutationsPattern>> mutationSorted = sortMutationsAccordingPos();
-        /* New method to adopt the method of generating a connecting graph and find all the connected path
-        List<Map<Character, Vertex>> vertexes = buildVertice(posArray, mutationSorted);
-        //There is problem of generating edges in this way
-        List<Set<Edge>> edges = buildEdges(templateHooked, scanPSMMap, posArray, vertexes);
-        List<MutationsPattern> mutationContigs = findConnectedPaths(vertexes, edges, posArray);
-*/
 
-        /*
-        System.out.println("Process all patterns consecutive according to posArray...");
-        TreeMap<Integer, List<MutationsPattern>> processedMutations = makePatternsConsecutive(mutationSorted, posArray, templateHooked);
         printMutationsAlongPos(mutationSorted);
-*/
-        printMutationsAlongPos(mutationSorted);
-
-        /*
-        System.out.println("Merge nested mutation patterns...");
-        TreeMap<Integer, List<MutationsPattern>> processedMutations = mergeNestedPatterns(mutationSorted, posArray);
-        printMutationsAlongPos(processedMutations);
-*/
 
         System.out.println("Extend mutation patterns...");
         //TreeMap<Integer, List<MutationsPattern>> extendedMutations = extendPatterns(processedMutations, posArray,
-        TreeMap<Integer, List<MutationsPattern>> extendedMutations = extendPatterns(mutationSorted, posArray,
-                                                                                    templateHooked, scanPSMMap);
+        TreeMap<Integer, List<MutationsPattern>> extendedMutations = extendPatterns(posArray, templateHooked, scanPSMMap);
+                //extendPatterns(mutationSorted, posArray,
+                 //                                                                   templateHooked, scanPSMMap);
         printMutationsAlongPos(extendedMutations);
 
         System.out.println("Get variations per pos...");
@@ -778,6 +612,7 @@ public class TemplateCandidateBuilder {
         System.out.println("Filter significant AA per pos...");
         TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos = getSigVariationsPerPos(AAsPerPos,
                                                                     templateHooked.getSeq(), ratio_thresh);
+
         printMutationsAlongPos(significantAAsPerPos);
 
         /* Sum up the intensity for each variation of each position. If an intensity appears multiple times,
