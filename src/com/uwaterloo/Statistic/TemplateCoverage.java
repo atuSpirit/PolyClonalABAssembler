@@ -6,13 +6,15 @@ import com.uwaterloo.Reader.PSMReader;
 import com.uwaterloo.Reader.ProteinPeptideReader;
 import com.uwaterloo.Reader.TemplatesLoader;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 import static com.uwaterloo.Assembler.setIonScoresForPSMList;
 
 public class TemplateCoverage {
-    public static void main() {
-        String dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_79\\";
+    private List<TemplateHooked> hookTemplates(String dir) {
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -34,21 +36,97 @@ public class TemplateCoverage {
         //Map psms to templates
         TemplatePSMsAligner psmAligner = new TemplatePSMsAligner();
         List<TemplateHooked> templateHookedList = psmAligner.alignPSMstoTemplate(psmList, templateList, peptideProteinMap);
-        //ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList = psmAligner.getPsmAlignedList();
+        ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList = psmAligner.getPsmAlignedList();
+
+        return templateHookedList;
+    }
+
+    private static int getScore(PSMAligned psmAligned, int i) {
+        return psmAligned.getIonScores()[i - psmAligned.getStart()];
+    }
+
+    private String statistic(List<TemplateHooked> templateHookedList, int scoreThresh) {
+        String reportString = "";
 
         for (TemplateHooked templateHooked : templateHookedList) {
             System.out.println(templateHooked.getTemplateAccession());
             int coveredAANum = 0;
             Set<String> scanSet = new HashSet<>();
+            int[] templateAAScore = new int[templateHooked.getSeq().length];
+            int confidentAANum = 0;
+            int scoreSum = 0;
+
             for (int i = 0; i < templateHooked.getSeq().length; i++) {
                 List<String> scanList = templateHooked.getMappedScanList().get(i);
-                if (scanList.size() > 0) {
-                    coveredAANum += 1;
-                    scanSet.addAll(scanList);
+                if (scanList.size() == 0) {
+                    continue;
                 }
+
+                //Compute the total confidence score sum of DB result at this position
+                List<PSMAligned> dbAlignedList = templateHooked.getDbList().get(i);
+
+                if (dbAlignedList.size() == 0) {
+                    continue;
+                }
+
+                for (PSMAligned psmAligned : dbAlignedList) {
+                    int start = psmAligned.getStart();
+                    int end = psmAligned.getEnd();
+                    for (int j = start; j <= end; j++) {
+                        if (psmAligned.getIonScores() == null) continue;
+                        templateAAScore[j] += psmAligned.getIonScores()[j - start];
+                    }
+                    //Add scans with db result mapped to the template
+                    scanSet.add(psmAligned.getScan());
+                }
+
+                //Compute the coverage of db at this position
+                coveredAANum += 1;
+
+                //Add the score of this position to the total sum of scores of this template
+                scoreSum += templateAAScore[i];
+                //System.out.println(i + "," + templateAAScore[i]);
+
+                if (templateAAScore[i] >= scoreThresh) {
+                    confidentAANum++;
+                }
+
+                //scanSet.addAll(scanList);
+
             }
-            System.out.println(coveredAANum + "," + scanSet.size());
+            reportString += templateHooked.getTemplateAccession() + "\t" + coveredAANum + "\t" + scanSet.size() +
+                    "\t" + scoreSum + "\t" + confidentAANum + "\n";
+            System.out.println(coveredAANum + "," + scanSet.size() + ", " + scoreSum + ", " + confidentAANum);
         }
 
+        return reportString;
     }
+
+    private void exportStatitic(String dir, String reportString) {
+        String filePath = dir + "statistic.txt";
+        try (BufferedWriter br = new BufferedWriter(new FileWriter(filePath))) {
+            br.write("Accession\tcoverage\tpsmNum\ttotalScore\tconfidentAANum\n");
+            br.write(reportString);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        String dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_34\\";
+        //dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
+
+        TemplateCoverage tc = new TemplateCoverage();
+        List<TemplateHooked> templateHookedList = tc.hookTemplates(dir);
+
+        //Draw the histogram of score of each position in a template, choose 1000 as the threshold whether this position is a confident one.
+        int scoreThresh = 1000;
+        String reportString = tc.statistic(templateHookedList, scoreThresh);
+
+        tc.exportStatitic(dir, reportString);
+
+
+    }
+
+
 }

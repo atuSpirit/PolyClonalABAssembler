@@ -247,6 +247,7 @@ public class TemplateDenovoAligner {
 
     public void majorityVoteInDnDominantRegion(List<TemplateHooked> templateHookedList, float dbDnRatioThresh) {
         for (TemplateHooked templateHooked : templateHookedList) {
+            System.out.println("Debug: template " + templateHooked.getTemplateAccession());
             int templateLength = templateHooked.getSeq().length;
             char[] modifiedTemplateSeq = templateHooked.getSeq().clone();
             for (int i = 0; i < templateLength; i++) {
@@ -323,7 +324,7 @@ public class TemplateDenovoAligner {
         char AAWithMaxScore = '0';
         int maxScore = 0;
         for (char AA : AAScoreSumMap.keySet()) {
-            System.out.println("Debug: " + " pos: " + pos + " " + AA + " " + AAScoreSumMap.get(AA));
+           // System.out.println("Debug: " + " pos: " + pos + " " + AA + " " + AAScoreSumMap.get(AA));
             if (maxScore < AAScoreSumMap.get(AA)) {
                 maxScore = AAScoreSumMap.get(AA);
                 AAWithMaxScore = AA;

@@ -15,7 +15,9 @@ public class Assembler {
         dir = "D:\\Hao\\data\\for_analysis\\PolyClonal_ab19001_SPIDER_12\\";
         dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_46\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
-        dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_79\\";
+        dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
+        dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_50\\";
+        //dir = "D:\\Hao\\result\\ab19001.5enzymes.new_PEAKS_89\\";
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_70\\";
         String psmFile = dir + "DB search psm.csv";
@@ -57,10 +59,12 @@ public class Assembler {
         short kmerSize = 6;
         dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
+        double significantThreshold = 0.1;
+
         boolean useDenovo = false;
         if (!useDenovo) {
             //Generating candidate templates using DB and Spider PSMs
-            generateCandidateTemplates(templateHookedList, listOfPSMAlignedList);
+            generateCandidateTemplates(templateHookedList, listOfPSMAlignedList, significantThreshold);
         } else {
             //Generating candidate templates using denovo only results
             float dbDnRatioThresh = 1.0f;
@@ -75,6 +79,7 @@ public class Assembler {
         int min_template_length = 0;  //If a template length is shorter than the min_length, don't output it.
 
         exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
+
     }
 
     /* Export candidate templates together with contaminant sequences as a fasta file */
@@ -89,10 +94,18 @@ public class Assembler {
                 if (candidateTemplates.get(i).length < min_template_length) {
                     continue;
                 }
-                System.out.println(">can" + (i + 1) + "_" + templateAccession);
-                System.out.println(new String(candidateTemplates.get(i)));
-                seqsToExport += ">can" + (i + 1) + "_" + templateAccession + "\n";
-                seqsToExport += new String(candidateTemplates.get(i)) + "\n";
+
+                if (candidateTemplates.size() < 2) {
+                    System.out.println(">" + templateAccession);
+                    System.out.println(new String(candidateTemplates.get(i)));
+                    seqsToExport += ">" + templateAccession + "\n";
+                    seqsToExport += new String(candidateTemplates.get(i)) + "\n";
+                } else {
+                    System.out.println(">can" + (i + 1) + "_" + templateAccession);
+                    System.out.println(new String(candidateTemplates.get(i)));
+                    seqsToExport += ">can" + (i + 1) + "_" + templateAccession + "\n";
+                    seqsToExport += new String(candidateTemplates.get(i)) + "\n";
+                }
             }
             //Debug
             //break;
@@ -122,11 +135,12 @@ public class Assembler {
     Attach the candidate templates to the mutated templates in templateHookedList
      */
     private void generateCandidateTemplates(List<TemplateHooked> templateHookedList,
-                                                    ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList) {
+                                            ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList,
+                                            double significantThreshold) {
         for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
             System.out.println("Template " + templateId + " " + templateHookedList.get(templateId).getTemplateAccession());
             TemplateHooked aTemplateHooked = templateHookedList.get(templateId);
-            List<char[]> top2CandidateTemplates = findCandidateForOneTemplate(aTemplateHooked, templateId, listOfPSMAlignedList);
+            List<char[]> top2CandidateTemplates = findCandidateForOneTemplate(aTemplateHooked, templateId, listOfPSMAlignedList, significantThreshold);
             templateHookedList.get(templateId).setModifiedTemplates(top2CandidateTemplates);
             //Debug
             //break;
@@ -172,17 +186,17 @@ public class Assembler {
     }
 
     private List<char[]> findCandidateForOneTemplate(TemplateHooked aTemplateHooked, int templateId,
-                                             ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList) {
+                                                     ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList, double significantThreshold) {
 
         MapScanPSMAligned scanPSMMapper = new MapScanPSMAligned(listOfPSMAlignedList.get(templateId));
         HashMap<String, PSMAligned> scanPSMMap = scanPSMMapper.getScanPSMMap();
 
         MutationValidator validator = new MutationValidator();
-        List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsOnTemplateList = validator.findSignificantMutations(aTemplateHooked, scanPSMMap);
+        List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsOnTemplateList = validator.findSignificantMutations(aTemplateHooked, scanPSMMap, significantThreshold);
         //  printMutationsOnTemplate(mutationsOnTemplateList);
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder(mutationsOnTemplateList);
-        List<char[]> topCandidateTemplates = templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked, scanPSMMap);
+        List<char[]> topCandidateTemplates = templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked, scanPSMMap, significantThreshold);
 
 //        trimTemplateCEnd(aTemplateHooked, topCandidateTemplates);
 

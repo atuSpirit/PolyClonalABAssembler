@@ -355,15 +355,14 @@ public class TemplateCandidateBuilder {
         Map<MutationsPattern, MutationsPattern> extendedPatterns = new HashMap<>();
         Set<String> checkScanSet = new HashSet<>();
         for (Integer pos : posArray) {
-            if (pos == 47) {
-                System.out.println("Debug in extendPatterns");
-            }
             //Extract all scans covering this position
             List<String> scanList = templateHooked.getMappedScanList().get(pos);
 
             for (String scan : scanList) {
                 if (checkScanSet.contains(scan)) {
                      continue;
+                } else {
+                    checkScanSet.add(scan);
                 }
                 PSMAligned psmAligned = scanPSMMap.get(scan);
                 int start = psmAligned.getStart();
@@ -373,6 +372,7 @@ public class TemplateCandidateBuilder {
                 List<Integer> posList = getPosListInRange(posArray, start, end);
 
                 MutationsPattern extendedPattern =  extractAAs(posList, psmAligned);
+
                 if (extendedPatterns.containsKey(extendedPattern)) {
                     //Update the freq and score
                     extendedPatterns.get(extendedPattern).setFreq(extendedPatterns.get(extendedPattern).getFreq() + 1);
@@ -510,7 +510,7 @@ public class TemplateCandidateBuilder {
 
     /* Filter the AA under ratio_thresh. All pattern in sigAAsPerPos are a single AA */
     private TreeMap<Integer, List<MutationsPattern>> getSigVariationsPerPos(TreeMap<Integer, List<MutationsPattern>> AAsPerPos,
-                                                                            char[] templateAAs, float ratio_thresh) {
+                                                                            char[] templateAAs, double ratio_thresh) {
         TreeMap<Integer, List<MutationsPattern>> sigAAsPerPos = new TreeMap<>();
         for (int pos : AAsPerPos.keySet()) {
             List<MutationsPattern> patterns = AAsPerPos.get(pos);
@@ -538,6 +538,13 @@ public class TemplateCandidateBuilder {
         char[] AAs = psmAligned.getAAs();
         int start = psmAligned.getStart();
         short[] scores = psmAligned.getIonScores();
+        if (scores == null) {
+            //For the case Peaks does not have fragment ions, set all score to zero.
+            scores = new short[AAs.length];
+            for (int i = 0; i < AAs.length; i++) {
+                scores[i] = 0;
+            }
+        }
         String extractedAAs = "";
         int score = 0;
         for (int pos : posList) {
@@ -586,7 +593,7 @@ public class TemplateCandidateBuilder {
         return templatePattern;
     }
 
-    public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap) {
+    public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap, double significantThreshold) {
         System.out.println(templateHooked.getTemplateAccession());
         List<Integer> posArray = getPosSet();
         System.out.println(posArray.toString());
@@ -608,10 +615,9 @@ public class TemplateCandidateBuilder {
         TreeMap<Integer, List<MutationsPattern>> AAsPerPos = getVariationsPerPos(extendedMutations);
         printMutationsAlongPos(AAsPerPos);
 
-        float ratio_thresh = 0.1f;
         System.out.println("Filter significant AA per pos...");
         TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos = getSigVariationsPerPos(AAsPerPos,
-                                                                    templateHooked.getSeq(), ratio_thresh);
+                                                                    templateHooked.getSeq(), significantThreshold);
 
         printMutationsAlongPos(significantAAsPerPos);
 
