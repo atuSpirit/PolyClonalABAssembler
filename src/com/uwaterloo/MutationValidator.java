@@ -470,6 +470,8 @@ public class MutationValidator {
         if (psmAligned.getPeptide().contains("del")) {
             System.err.println("Error in extractAAComb() : scan " + psmAligned.getScan() +
                     " contains del " + psmAligned.getPeptide());
+            //TODO: to deal with del part
+            return null;
         }
 
         int size = posList.size();

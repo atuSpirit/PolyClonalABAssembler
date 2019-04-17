@@ -54,6 +54,7 @@ public class TemplateCoverage {
             Set<String> scanSet = new HashSet<>();
             int[] templateAAScore = new int[templateHooked.getSeq().length];
             int confidentAANum = 0;
+            int moreConfidentAANum = 0;
             int scoreSum = 0;
 
             for (int i = 0; i < templateHooked.getSeq().length; i++) {
@@ -64,20 +65,37 @@ public class TemplateCoverage {
 
                 //Compute the total confidence score sum of DB result at this position
                 List<PSMAligned> dbAlignedList = templateHooked.getDbList().get(i);
+                List<PSMAligned> spiderList = templateHooked.getSpiderList().get(i);
 
-                if (dbAlignedList.size() == 0) {
-                    continue;
+                if (dbAlignedList.size() > 0) {
+                    for (PSMAligned psmAligned : dbAlignedList) {
+                        int start = psmAligned.getStart();
+                        int end = psmAligned.getEnd();
+                        for (int j = start; j <= end; j++) {
+                            if (psmAligned.getIonScores() == null) continue;
+                            templateAAScore[j] += psmAligned.getIonScores()[j - start];
+                        }
+                        //Add scans with db result mapped to the template
+                        scanSet.add(psmAligned.getScan());
+                    }
                 }
 
-                for (PSMAligned psmAligned : dbAlignedList) {
-                    int start = psmAligned.getStart();
-                    int end = psmAligned.getEnd();
-                    for (int j = start; j <= end; j++) {
-                        if (psmAligned.getIonScores() == null) continue;
-                        templateAAScore[j] += psmAligned.getIonScores()[j - start];
+                if (spiderList.size() > 0) {
+                    for (PSMAligned psmAligned : spiderList) {
+                        if (psmAligned.getPeptide().contains("del")) {
+                            System.err.println("Del in spider result, skip");
+                            continue;
+                        }
+
+                        int start = psmAligned.getStart();
+                        int end = psmAligned.getEnd();
+                        for (int j = start; j <= end; j++) {
+                            if (psmAligned.getIonScores() == null) continue;
+                            templateAAScore[j] += psmAligned.getIonScores()[j - start];
+                        }
+                        //Add scans with db result mapped to the template
+                        scanSet.add(psmAligned.getScan());
                     }
-                    //Add scans with db result mapped to the template
-                    scanSet.add(psmAligned.getScan());
                 }
 
                 //Compute the coverage of db at this position
@@ -89,14 +107,18 @@ public class TemplateCoverage {
 
                 if (templateAAScore[i] >= scoreThresh) {
                     confidentAANum++;
+                    if (templateAAScore[i] >= scoreThresh * 2) {
+                        moreConfidentAANum++;
+                    }
                 }
 
                 //scanSet.addAll(scanList);
 
             }
             reportString += templateHooked.getTemplateAccession() + "\t" + coveredAANum + "\t" + scanSet.size() +
-                    "\t" + scoreSum + "\t" + confidentAANum + "\n";
-            System.out.println(coveredAANum + "," + scanSet.size() + ", " + scoreSum + ", " + confidentAANum);
+                    "\t" + scoreSum + "\t" + confidentAANum + "\t" + moreConfidentAANum + "\n";
+            System.out.println(coveredAANum + "," + scanSet.size() + ", " + scoreSum + ", " + confidentAANum +
+                    ", " + moreConfidentAANum);
         }
 
         return reportString;
@@ -105,7 +127,7 @@ public class TemplateCoverage {
     private void exportStatitic(String dir, String reportString) {
         String filePath = dir + "statistic.txt";
         try (BufferedWriter br = new BufferedWriter(new FileWriter(filePath))) {
-            br.write("Accession\tcoverage\tpsmNum\ttotalScore\tconfidentAANum\n");
+            br.write("Accession\tcoverage\tpsmNum\ttotalScore\tconfidentAANum\tmoreConfidentAANum\n");
             br.write(reportString);
         } catch (IOException e) {
             e.printStackTrace();
@@ -113,8 +135,9 @@ public class TemplateCoverage {
     }
 
     public static void main(String[] args) {
-        String dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_34\\";
+        String dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_65\\";
         //dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
+        //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
 
         TemplateCoverage tc = new TemplateCoverage();
         List<TemplateHooked> templateHookedList = tc.hookTemplates(dir);
@@ -124,8 +147,6 @@ public class TemplateCoverage {
         String reportString = tc.statistic(templateHookedList, scoreThresh);
 
         tc.exportStatitic(dir, reportString);
-
-
     }
 
 

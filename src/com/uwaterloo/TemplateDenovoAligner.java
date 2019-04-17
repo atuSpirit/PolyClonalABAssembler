@@ -349,6 +349,7 @@ public class TemplateDenovoAligner {
     private void printAlignedDn(List<TemplateHooked> templateHookedList) {
         for (TemplateHooked templateHooked : templateHookedList) {
             System.out.println("Template " + templateHooked.getTemplateAccession());
+
             for (int i = 0; i < templateHooked.getSeq().length; i++) {
                 int dnSize = templateHooked.getDnList().get(i).size();
                 int psmSize = templateHooked.getMappedScanList().get(i).size();
@@ -359,11 +360,15 @@ public class TemplateDenovoAligner {
 //                if (templateHooked.getDnList().get(i).size() >= 20) {
                 if (psmDnRatio < 2) {
                     String scanList = "";
-                    int minStart = 500;
+                    int minStart = 500; //The length longer than all antibodies
                     for (DenovoAligned dnA : templateHooked.getDnList().get(i)) {
                         scanList += dnA.dnScan + " ";
                         int currentStart = dnA.gettStart() - dnA.getDnStart();
                         minStart = currentStart < minStart ? currentStart : minStart;
+                    }
+                    if ((templateHooked.getTemplateAccession().equals("can1_can1_ab|id_2918963523873625935|id_2918963523873625935")) &&
+                            (i == 85)) {
+                        System.out.println("Debug");
                     }
                     System.out.println("pos " + i + " ratio: " + psmDnRatio + " db num: " + templateHooked.getMappedScanList().get(i).size() +
                             " dn num: " + templateHooked.getDnList().get(i).size());

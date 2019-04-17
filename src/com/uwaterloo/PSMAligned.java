@@ -60,7 +60,6 @@ public class PSMAligned extends PSM {
         return confScore;
     }
 
-
     private void setPositionOfVariations(String peptide) {
         if (peptide.contains("sub") || peptide.contains("ins") || peptide.contains("del")) {
             this.positionOfVariations = new ArrayList<>();

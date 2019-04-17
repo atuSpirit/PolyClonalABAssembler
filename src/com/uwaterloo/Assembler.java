@@ -16,10 +16,11 @@ public class Assembler {
         dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_46\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
-        dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_50\\";
+        dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_80\\";
         //dir = "D:\\Hao\\result\\ab19001.5enzymes.new_PEAKS_89\\";
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
-        //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_70\\";
+        //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
+        dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_67\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
