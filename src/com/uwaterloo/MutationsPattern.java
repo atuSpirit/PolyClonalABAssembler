@@ -74,13 +74,25 @@ public class MutationsPattern {
         return intensitySet;
     }
 
+    public long getIntensity() {
+        long sum = 0;
+        if (intensitySet == null) {
+            return 0;
+        }
+        for (long intensity : intensitySet) {
+            sum += intensity;
+        }
+        return sum;
+    }
+
     public void setIntensitySet(Set<Long> intensitySet) {
         this.intensitySet = intensitySet;
     }
 
     @Override
     public String toString() {
-        return AAs + " at " +  posList.toString() + " freq: " + freq + " score: " + score;
+        return AAs + " at " +  posList.toString() + " freq: " + freq +
+                " score: " + score + " intensity: " + getIntensity();
     }
 
     @Override

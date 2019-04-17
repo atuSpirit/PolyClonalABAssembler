@@ -76,10 +76,12 @@ public class MutationValidator {
      * @param templateHooked
      * @param psmAligned
      * @param scanPSMMap
+     * @param significantThreshold
      * @return <list<position>, mutationPattern>
      */
     private HashMap<List<Integer>, List<MutationsPattern>> validateOnePSMAligned(TemplateHooked templateHooked, PSMAligned psmAligned,
-                                                                 HashMap<String, PSMAligned> scanPSMMap) {
+                                                                                 HashMap<String, PSMAligned> scanPSMMap,
+                                                                                 double significantThreshold) {
         /* validate the psms having same list of variation positions */
         HashMap<String, MutationsPattern> extractedScanAAPatternMap = buildScanAAPatternMapForOnePSM(templateHooked,
                 psmAligned, scanPSMMap);
@@ -89,7 +91,7 @@ public class MutationValidator {
         /* Use frequency as pattern score
         double threshold = 0.1;
         HashMap<String, Integer> patternFreqTable = countPatternFreqTable(extractedScanAAPatternMap);
-        List<String> significantMutatedPatternsOnTemplate = getSignificantMutatedList(patternFreqTable,
+        List<String> significantMutatedPatternsOnTemplate = getSignificantFreqMutatedList(patternFreqTable,
                 threshold);
         */
 
@@ -103,7 +105,9 @@ public class MutationValidator {
             System.out.println(pattern.toString() + " " + patternScoreTable.get(pattern));
         }
         */
-        List<MutationsPattern> significantMutatedPatternsOnTemplate = getSignificantMutatedList(patternScoreTable);
+
+        List<MutationsPattern> significantMutatedPatternsOnTemplate = getSignificantScoreMutatedList(patternScoreTable,
+                                                                                            significantThreshold);
 
         /* Remove scans and PSMAlign containing unsignificant mutation patterns */
         HashSet<MutationsPattern> significantPatterns = new HashSet<>(significantMutatedPatternsOnTemplate);
@@ -128,6 +132,7 @@ public class MutationValidator {
         if (isShrinked) {
             return null;
         }
+
 
         /* The following code are used for method using frequency
         // The frequency of significant patterns are extracted from PatternFreqTable and attached to pattern.
@@ -157,7 +162,7 @@ public class MutationValidator {
 
 
     /* return those patterns whose freq greater than threshold in the top 3 patterns */
-    private List<String> getSignificantMutatedList(HashMap<String, Integer> patternFreqTable,
+    private List<String> getSignificantFreqMutatedList(HashMap<String, Integer> patternFreqTable,
                                                    double threshold) {
         List<String> significantMutatedPattern = new ArrayList<>();
         /* Get the sum of scans */
@@ -189,9 +194,11 @@ public class MutationValidator {
     /**
      * Compute significant mutationPatterns according to top 3 pattern scores.
      * @param patternScoreTable
+     * @param threshold  The ratio threshold as significant
      * @return a list of significant mutationPatterns
      */
-    private List<MutationsPattern> getSignificantMutatedList(HashMap<MutationsPattern, Integer> patternScoreTable) {
+    private List<MutationsPattern> getSignificantScoreMutatedList(HashMap<MutationsPattern, Integer> patternScoreTable,
+                                                                  double threshold) {
         List<MutationsPattern> significantMutatedPattern = new ArrayList<>();
 
         /* Get the sum of scores */
@@ -199,8 +206,6 @@ public class MutationValidator {
         for (int value : patternScoreTable.values()) {
             total += value;
         }
-
-        double threshold = 0.1;
 
         /* Get the 3 patterns with top 3 frequency */
         MutationsPattern[] top3Patterns = getPatternsWithTop3Score(patternScoreTable);
@@ -465,6 +470,8 @@ public class MutationValidator {
         if (psmAligned.getPeptide().contains("del")) {
             System.err.println("Error in extractAAComb() : scan " + psmAligned.getScan() +
                     " contains del " + psmAligned.getPeptide());
+            //TODO: to deal with del part
+            return null;
         }
 
         int size = posList.size();
@@ -617,10 +624,12 @@ public class MutationValidator {
      * For the given templateHooked, find a list of significant mutation patterns.
      * @param templateHooked
      * @param scanPSMMap
+     * @param significantThreshold
      * @return a list of mutation patterns on the template, denoted by HashMap<posList, list of significant patterns.
      */
     public List<HashMap<List<Integer>, List<MutationsPattern>>> findSignificantMutations(TemplateHooked templateHooked,
-                                                                                         HashMap<String, PSMAligned> scanPSMMap) {
+                                                                                         HashMap<String, PSMAligned> scanPSMMap,
+                                                                                         double significantThreshold) {
         int maxMutationNum = findMaxMutationNumPerPSM(templateHooked);
         System.out.println("Max mutation num: " + maxMutationNum);
         //Store mutationsOnTemplate according to the mutationNum separately.
@@ -651,8 +660,9 @@ public class MutationValidator {
                         break;
                     }
 
+
                     HashMap<List<Integer>, List<MutationsPattern>> partMutatedAAsOnTemplate = validateOnePSMAligned(templateHooked,
-                            psmAligned, scanPSMMap);
+                            psmAligned, scanPSMMap, significantThreshold);
                     if (partMutatedAAsOnTemplate != null) {
                         for (List<Integer> posList : partMutatedAAsOnTemplate.keySet()) {
                             mutationsOnTemplate.put(posList, partMutatedAAsOnTemplate.get(posList));

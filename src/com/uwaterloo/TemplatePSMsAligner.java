@@ -68,7 +68,7 @@ public class TemplatePSMsAligner {
             /* For each position the peptide mapped, add the scan to its scanList */
             int end = psmAligned.getEnd();
             ArrayList<ArrayList<String>> mappedScanList = templateHooked.getMappedScanList();
-            for (int i = start; i < end; i++) {
+            for (int i = start; i <= end; i++) {
                 mappedScanList.get(i).add(scan);
             }
         }
