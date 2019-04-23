@@ -666,43 +666,58 @@ public class TemplateCandidateBuilder {
 
         System.out.println("Generating candidate templates...");
         List<char[]> candidateTemplates = new ArrayList<>();
+        boolean polyClonal = false;
+        boolean useTopScoreNotIntensity = false;    //true use score, false use intensity
 
-        boolean homo = true;
+        if (!polyClonal) {
+            //For mAB, no need second candidate, pick the candidate with highest score
+            char[] candidateTemplate1 = templateHooked.getSeq().clone();
 
-        if (homo) {
-            //Apply homogeneous mutations to template to generate one candidate template
-            List<MutationsPattern> homogeneousMutations = getHomogeneousMutations(significantAAsPerPos, templatePattern.getAAs());
-            char[] homoCandidateTemplate = getCandidateTemplate(templateHooked, homogeneousMutations);
-            candidateTemplates.add(homoCandidateTemplate);
-        } else {
-            //Add the template with homogeneous position altered as one of the template
-            List<MutationsPattern> patternList = new ArrayList<>();
-            patternList.add(templatePattern);
-            char[] templateCandidate = getCandidateTemplate(templateHooked, patternList);
-            candidateTemplates.add(templateCandidate);
-
-
-            char[] candidateTemplate1 = templateCandidate.clone();
-            char[] candidateTemplate2 = templateCandidate.clone();
-
-            boolean useTopScoreNotIntensity = false;    //true use score, false use intensity
             if (useTopScoreNotIntensity) {
                 //Choose mutation according to higher score
                 changeCandidateTemplateAccordMaxScore(candidateTemplate1, significantAAsPerPos);
-                changeCandidateTemplateAccordMaxScore(candidateTemplate2, significantAAsPerPos);
             } else {
                 //Choose mutation according to higher intensity
                 changeCandidateTemplateAccordMaxIntensity(candidateTemplate1, significantAAsPerPos);
-                changeCandidateTemplateAccordMaxIntensity(candidateTemplate2, significantAAsPerPos);
             }
 
-            if (!java.util.Arrays.equals(templateCandidate, candidateTemplate1)) {
-                candidateTemplates.add(candidateTemplate1);
-            }
-            if (!java.util.Arrays.equals(templateCandidate, candidateTemplate2)) {
-                candidateTemplates.add(candidateTemplate2);
-            }
+            candidateTemplates.add(candidateTemplate1);
+        } else {
+            //For Polyclonal, each template might diverge into three.
+            boolean homo = false;
 
+            if (homo) {
+                //Apply homogeneous mutations to template to generate one candidate template
+                List<MutationsPattern> homogeneousMutations = getHomogeneousMutations(significantAAsPerPos, templatePattern.getAAs());
+                char[] homoCandidateTemplate = getCandidateTemplate(templateHooked, homogeneousMutations);
+                candidateTemplates.add(homoCandidateTemplate);
+            } else {
+                //Add the template with homogeneous position altered as one of the template
+                List<MutationsPattern> patternList = new ArrayList<>();
+                patternList.add(templatePattern);
+                char[] templateCandidate = getCandidateTemplate(templateHooked, patternList);
+                candidateTemplates.add(templateCandidate);
+
+                char[] candidateTemplate1 = templateCandidate.clone();
+                char[] candidateTemplate2 = templateCandidate.clone();
+
+                if (useTopScoreNotIntensity) {
+                    //Choose mutation according to higher score
+                    changeCandidateTemplateAccordMaxScore(candidateTemplate1, significantAAsPerPos);
+                    changeCandidateTemplateAccordMaxScore(candidateTemplate2, significantAAsPerPos);
+                } else {
+                    //Choose mutation according to higher intensity
+                    changeCandidateTemplateAccordMaxIntensity(candidateTemplate1, significantAAsPerPos);
+                    changeCandidateTemplateAccordMaxIntensity(candidateTemplate2, significantAAsPerPos);
+                }
+
+                if (!java.util.Arrays.equals(templateCandidate, candidateTemplate1)) {
+                    candidateTemplates.add(candidateTemplate1);
+                }
+                if (!java.util.Arrays.equals(templateCandidate, candidateTemplate2)) {
+                    candidateTemplates.add(candidateTemplate2);
+                }
+            }
         }
 
 /*

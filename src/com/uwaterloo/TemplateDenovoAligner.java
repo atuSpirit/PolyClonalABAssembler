@@ -9,23 +9,12 @@ public class TemplateDenovoAligner {
     List<DenovoOnly> denovoOnlyList;
     HashMap<String, DenovoOnly> scanDnMap;
 
-    public TemplateDenovoAligner(List<DenovoOnly> denovoOnlyList) {
+    public TemplateDenovoAligner(List<DenovoOnly> denovoOnlyList, HashMap<String, DenovoOnly> scanDnMap) {
         this.denovoOnlyList = denovoOnlyList;
-        this.scanDnMap = buildScanDnMap();
+        this.scanDnMap = scanDnMap;
         //this.denovoKmerIndexTable = new Hashtable<>();
     }
 
-    /**
-     * Build a map between the scan number and the DenovoOnly object.
-     * @return
-     */
-    private HashMap<String, DenovoOnly> buildScanDnMap() {
-        HashMap<String, DenovoOnly> scanDnMap = new HashMap<>();
-        for (DenovoOnly dn : denovoOnlyList) {
-            scanDnMap.put(dn.getScan(), dn);
-        }
-        return scanDnMap;
-    }
 
     /**
      * Build a hashtable <kmer, Listof<kmerPosition>>  kmerPosition is <denovo scans, pos where kmer appears>
@@ -212,7 +201,8 @@ public class TemplateDenovoAligner {
      * @param scanDnAlignListWithMaxScoreMap A hashmap <dnScan, dnAlignedListWithMaxScore>
      */
     private void hookDnToTemplate(List<TemplateHooked> templateHookedList,
-                                  HashMap<String, List<DenovoAligned>> scanDnAlignListWithMaxScoreMap) {
+                                  HashMap<String, List<DenovoAligned>> scanDnAlignListWithMaxScoreMap,
+                                  boolean toRight) {
         for (String scan : scanDnAlignListWithMaxScoreMap.keySet()) {
             List<DenovoAligned> dnAlignedList = scanDnAlignListWithMaxScoreMap.get(scan);
             for (DenovoAligned dnAligned : dnAlignedList) {
@@ -238,104 +228,15 @@ public class TemplateDenovoAligner {
                 }
                 //Attache the dnAlign to all positions it covered
                 for (int i = tStart; i <= tEnd; i++) {
-                    templateHookedList.get(templateId).getDnList().get(i).add(dnAligned);
-                }
-            }
-        }
-    }
-
-
-    public void majorityVoteInDnDominantRegion(List<TemplateHooked> templateHookedList, float dbDnRatioThresh) {
-        for (TemplateHooked templateHooked : templateHookedList) {
-            System.out.println("Debug: template " + templateHooked.getTemplateAccession());
-            int templateLength = templateHooked.getSeq().length;
-            char[] modifiedTemplateSeq = templateHooked.getSeq().clone();
-            for (int i = 0; i < templateLength; i++) {
-                int psmSize = templateHooked.getMappedScanList().get(i).size();
-                int dnSize = templateHooked.getDnList().get(i).size();
-
-                float ratio = (psmSize + 0.0f) / dnSize;
-                if (ratio < dbDnRatioThresh) {
-                    char AAWithMaxScore = majorityVoteAA(i, templateHooked);
-                    if (AAWithMaxScore != modifiedTemplateSeq[i]) {
-                        System.out.println("Debug: Modified pos " + i + " " + modifiedTemplateSeq[i] + " to " + AAWithMaxScore);
+                    if (toRight) {
+                        templateHookedList.get(templateId).getDnToRightList().get(i).add(dnAligned);
+                    } else {
+                        templateHookedList.get(templateId).getDnToLeftList().get(i).add(dnAligned);
                     }
-                    modifiedTemplateSeq[i] = AAWithMaxScore;
                 }
             }
-            List<char[]> modifiedTemplateList = new ArrayList<>();
-            modifiedTemplateList.add(modifiedTemplateSeq);
-            templateHooked.setModifiedTemplates(modifiedTemplateList);
         }
-
     }
-
-    /**
-     * For position pos on templateHooked, find the amino acid of majority score according
-     * to the psmList and dnlist of this location
-     * @param pos
-     * @param templateHooked
-     */
-    private char majorityVoteAA(int pos, TemplateHooked templateHooked) {
-        List<DenovoAligned> dnAlignList = templateHooked.getDnList().get(pos);
-        List<PSMAligned> spiderList = templateHooked.getSpiderList().get(pos);
-        List<PSMAligned> dbList = templateHooked.getDbList().get(pos);
-
-        HashMap<Character, Integer> AAScoreSumMap = new HashMap<>();
-        //Count the AA and its score sum appear in pos of spider sequences
-        for (PSMAligned spider : spiderList) {
-            //Get the position no spider seq
-            int aaPos = pos - spider.getStart();
-            char AA = spider.getAAs()[aaPos];
-            int score = spider.getConfScores()[aaPos];
-            if (AAScoreSumMap.containsKey(AA)) {
-                AAScoreSumMap.put(AA, (AAScoreSumMap.get(AA) + score));
-            } else {
-                AAScoreSumMap.put(AA, score);
-            }
-        }
-
-        //Count the AA and its score sum appear in pos of db sequences
-        for (PSMAligned db : dbList) {
-            int aaPos = pos - db.getStart();
-            char AA = db.getAAs()[aaPos];
-            int score = db.getConfScores()[aaPos];
-            if (AAScoreSumMap.containsKey(AA)) {
-                AAScoreSumMap.put(AA, (AAScoreSumMap.get(AA) + score));
-            } else {
-                AAScoreSumMap.put(AA, score);
-            }
-        }
-
-        //Count the AA and its score sum appear in pos of db sequences
-        for (DenovoAligned dnAlign : dnAlignList) {
-            DenovoOnly dn = scanDnMap.get(dnAlign.getDnScan());
-            int aaPos = dnAlign.getDnStart() + (pos - dnAlign.gettStart());
-            char AA = dn.getAAs()[aaPos];
-            int score = dn.getConfScores()[aaPos];
-            if (AAScoreSumMap.containsKey(AA)) {
-                AAScoreSumMap.put(AA, (AAScoreSumMap.get(AA) + score));
-            } else {
-                AAScoreSumMap.put(AA, score);
-            }
-        }
-
-        //Find the maxScore in AAScoreSumMap
-        char AAWithMaxScore = '0';
-        int maxScore = 0;
-        for (char AA : AAScoreSumMap.keySet()) {
-           // System.out.println("Debug: " + " pos: " + pos + " " + AA + " " + AAScoreSumMap.get(AA));
-            if (maxScore < AAScoreSumMap.get(AA)) {
-                maxScore = AAScoreSumMap.get(AA);
-                AAWithMaxScore = AA;
-            }
-        }
-
-
-
-        return AAWithMaxScore;
-    }
-
 
     /**
      * Print denovo only peptides according to their alignment to the template.
@@ -351,7 +252,9 @@ public class TemplateDenovoAligner {
             System.out.println("Template " + templateHooked.getTemplateAccession());
 
             for (int i = 0; i < templateHooked.getSeq().length; i++) {
-                int dnSize = templateHooked.getDnList().get(i).size();
+                int dnToRightSize = templateHooked.getDnToRightList().get(i).size();
+                int dnToLeftSize = templateHooked.getDnToLeftList().get(i).size();
+                int dnSize = dnToLeftSize + dnToRightSize;
                 int psmSize = templateHooked.getMappedScanList().get(i).size();
                 if (dnSize == 0) {
                     continue;
@@ -359,21 +262,28 @@ public class TemplateDenovoAligner {
                 float psmDnRatio = ((float) psmSize) / dnSize;
 //                if (templateHooked.getDnList().get(i).size() >= 20) {
                 if (psmDnRatio < 2) {
-                    String scanList = "";
                     int minStart = 500; //The length longer than all antibodies
-                    for (DenovoAligned dnA : templateHooked.getDnList().get(i)) {
-                        scanList += dnA.dnScan + " ";
+
+                    List<DenovoAligned> dnList;
+                    if (dnToLeftSize > 0 && dnToRightSize > 0) {
+                        dnList = new ArrayList<>();
+                        dnList.addAll(templateHooked.getDnToRightList().get(i));
+                        dnList.addAll(templateHooked.getDnToLeftList().get(i));
+                    } else if (dnToRightSize > 0) {
+                        dnList = templateHooked.getDnToRightList().get(i);
+                    } else {
+                        dnList = templateHooked.getDnToLeftList().get(i);
+                    }
+
+                    for (DenovoAligned dnA : dnList) {
                         int currentStart = dnA.gettStart() - dnA.getDnStart();
                         minStart = currentStart < minStart ? currentStart : minStart;
                     }
-                    if ((templateHooked.getTemplateAccession().equals("can1_can1_ab|id_2918963523873625935|id_2918963523873625935")) &&
-                            (i == 85)) {
-                        System.out.println("Debug");
-                    }
-                    System.out.println("pos " + i + " ratio: " + psmDnRatio + " db num: " + templateHooked.getMappedScanList().get(i).size() +
-                            " dn num: " + templateHooked.getDnList().get(i).size());
 
-                    for (DenovoAligned dnA : templateHooked.getDnList().get(i)) {
+                    System.out.println("pos " + i + " ratio: " + psmDnRatio + " db num: " + templateHooked.getMappedScanList().get(i).size() +
+                            " dn num: " + templateHooked.getDnToRightList().get(i).size());
+
+                    for (DenovoAligned dnA : dnList) {
                         String prefix = "";
                         for (int j = 0; j <= (dnA.gettStart() - dnA.getDnStart() - minStart); j++) {
                             prefix += " ";
@@ -382,6 +292,9 @@ public class TemplateDenovoAligner {
                         System.out.print(scanDnMap.get(dnA.getDnScan()).getAAs());
                         System.out.println("  " + dnA.toString());
                     }
+
+
+
 
                 }
             }
@@ -423,25 +336,6 @@ public class TemplateDenovoAligner {
         return dnCanExtendRightMap;
     }
 
-    /**
-     * If a position's dn num > thresh, print both its db num and dn num on that position
-     * @param templateHookedList
-     */
-    private void printTemplateDbvsDn(List<TemplateHooked> templateHookedList) {
-        int thresh = 0;
-        for (TemplateHooked templateHooked : templateHookedList) {
-            int seqLength = templateHooked.getSeq().length;
-            System.out.println(templateHooked.getTemplateAccession());
-            System.out.println("Pos,Db,Dn,Ratio");
-            for (int i = 0; i < seqLength; i++) {
-                if (templateHooked.getDnList().get(i).size() > thresh) {
-                    float ratio = ((float) templateHooked.getMappedScanList().get(i).size()) / templateHooked.getDnList().get(i).size();
-                    System.out.println(i + "," + templateHooked.getMappedScanList().get(i).size() + "," +
-                            templateHooked.getDnList().get(i).size() + "," + ratio);
-                }
-            }
-        }
-    }
 
     public void alignDenovoOnlyToTemplate(List<TemplateHooked> templateHookedList, short kmerSize) {
         Hashtable<String, List<KmerPosition>> denovoKmerIndexTable = buildKmerIndexTable(kmerSize);
@@ -458,15 +352,16 @@ public class TemplateDenovoAligner {
         //Hook the denovo only to the best matched template position
         //hookDnToTemplate(templateHookedList, scanDnAlignMap);
 
+        boolean toRight = true;
         //Find those dn whose left end are the same with the aligned template dnStart = 0
-
-        //Find those dn whose right end are the same with the aligned template  dnEnd = denovo length - 1.
         HashMap<String, List<DenovoAligned>> dnExtendRight = getDnCanExtendRight(scanDnAlignMap);
-        hookDnToTemplate(templateHookedList, dnExtendRight);
+        hookDnToTemplate(templateHookedList, dnExtendRight, toRight);
 
+        toRight = false;
+        //Find those dn whose right end are the same with the aligned template  dnEnd = denovo length - 1.
         HashMap<String, List<DenovoAligned>> dnExtendLeft = getDnCanExtendLeft(scanDnAlignMap, scanDnMap);
-        hookDnToTemplate(templateHookedList, dnExtendLeft);
+        hookDnToTemplate(templateHookedList, dnExtendLeft, toRight);
 //        printTemplateDbvsDn(templateHookedList);
-        printAlignedDn(templateHookedList);
+        //printAlignedDn(templateHookedList);
     }
 }

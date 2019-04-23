@@ -20,7 +20,8 @@ public class Assembler {
         //dir = "D:\\Hao\\result\\ab19001.5enzymes.new_PEAKS_89\\";
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
-        dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_67\\";
+        dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_97\\";
+        //dir = "D:\\Hao\\result\\Waters_mAB_PEAKS_85\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -55,9 +56,18 @@ public class Assembler {
         List<TemplateHooked> templateHookedList = psmAligner.alignPSMstoTemplate(psmList, templateList, peptideProteinMap);
         ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList = psmAligner.getPsmAlignedList();
 
+        //Transfer list of PSMAligned to list of scanPSMMap for each template
+        List<HashMap<String, PSMAligned>> listOfScanPSMMap = new ArrayList<>();
+        for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
+            MapScanPSMAligned scanPSMMapper = new MapScanPSMAligned(listOfPSMAlignedList.get(templateId));
+            HashMap<String, PSMAligned> scanPSMMap = scanPSMMapper.getScanPSMMap();
+            listOfScanPSMMap.add(scanPSMMap);
+        }
+
+        HashMap<String, DenovoOnly> scanDnMap = buildScanDnMap(dnList);
         //Map Denovo only peptides to templates
-        TemplateDenovoAligner dnAligner = new TemplateDenovoAligner(dnList);
-        short kmerSize = 6;
+        TemplateDenovoAligner dnAligner = new TemplateDenovoAligner(dnList, scanDnMap);
+        short kmerSize = 4;
         dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
         double significantThreshold = 0.1;
@@ -65,11 +75,13 @@ public class Assembler {
         boolean useDenovo = false;
         if (!useDenovo) {
             //Generating candidate templates using DB and Spider PSMs
-            generateCandidateTemplates(templateHookedList, listOfPSMAlignedList, significantThreshold);
+            generateCandidateTemplates(templateHookedList, listOfScanPSMMap, significantThreshold);
         } else {
             //Generating candidate templates using denovo only results
-            float dbDnRatioThresh = 1.0f;
-            dnAligner.majorityVoteInDnDominantRegion(templateHookedList, dbDnRatioThresh);;
+            float dbDnRatioThresh = 1.5f;
+            UncertainRegionAssembler uncertainRegionAssembler = new UncertainRegionAssembler();
+            uncertainRegionAssembler.assembleUncertainRegions(templateHookedList,
+                                                listOfScanPSMMap, scanDnMap, dbDnRatioThresh);
         }
 
         //Export candidate templates together with contaminant sequences as a fasta file
@@ -82,6 +94,7 @@ public class Assembler {
         exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
 
     }
+
 
     /* Export candidate templates together with contaminant sequences as a fasta file */
     private void exportCandidateTemplates(List<TemplateHooked> templateHookedList, int min_template_length,
@@ -136,12 +149,13 @@ public class Assembler {
     Attach the candidate templates to the mutated templates in templateHookedList
      */
     private void generateCandidateTemplates(List<TemplateHooked> templateHookedList,
-                                            ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList,
+                                            List<HashMap<String, PSMAligned>> listOfScanPSMMap,
                                             double significantThreshold) {
         for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
             System.out.println("Template " + templateId + " " + templateHookedList.get(templateId).getTemplateAccession());
             TemplateHooked aTemplateHooked = templateHookedList.get(templateId);
-            List<char[]> top2CandidateTemplates = findCandidateForOneTemplate(aTemplateHooked, templateId, listOfPSMAlignedList, significantThreshold);
+            List<char[]> top2CandidateTemplates = findCandidateForOneTemplate(aTemplateHooked,
+                    listOfScanPSMMap.get(templateId), significantThreshold);
             templateHookedList.get(templateId).setModifiedTemplates(top2CandidateTemplates);
             //Debug
             //break;
@@ -186,12 +200,9 @@ public class Assembler {
         }
     }
 
-    private List<char[]> findCandidateForOneTemplate(TemplateHooked aTemplateHooked, int templateId,
-                                                     ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList, double significantThreshold) {
-
-        MapScanPSMAligned scanPSMMapper = new MapScanPSMAligned(listOfPSMAlignedList.get(templateId));
-        HashMap<String, PSMAligned> scanPSMMap = scanPSMMapper.getScanPSMMap();
-
+    private List<char[]> findCandidateForOneTemplate(TemplateHooked aTemplateHooked,
+                                                     HashMap<String, PSMAligned> scanPSMMap,
+                                                     double significantThreshold) {
         MutationValidator validator = new MutationValidator();
         List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsOnTemplateList = validator.findSignificantMutations(aTemplateHooked, scanPSMMap, significantThreshold);
         //  printMutationsOnTemplate(mutationsOnTemplateList);
@@ -205,6 +216,17 @@ public class Assembler {
 
     }
 
+    /**
+     * Build a map between the scan number and the DenovoOnly object.
+     * @return
+     */
+    private HashMap<String, DenovoOnly> buildScanDnMap(List<DenovoOnly> denovoOnlyList) {
+        HashMap<String, DenovoOnly> scanDnMap = new HashMap<>();
+        for (DenovoOnly dn : denovoOnlyList) {
+            scanDnMap.put(dn.getScan(), dn);
+        }
+        return scanDnMap;
+    }
 
 
     private void printMutationsOnTemplate(List<HashMap<List<Integer>, List<String>>> mutationsOnTemplateList) {

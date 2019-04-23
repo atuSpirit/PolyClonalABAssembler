@@ -1,20 +1,20 @@
 package com.uwaterloo;
-import java.util.LinkedList;
 import java.util.ArrayList;
 
-/* Temorary no use */
 public class TemplateHooked extends Template {
     ArrayList<ArrayList<String>> mappedScanList;   //The list of scans mapped to each position of the template.
-    ArrayList<ArrayList<PSMAligned>> dbList;
-    ArrayList<ArrayList<PSMAligned>> spiderList;
-    ArrayList<ArrayList<DenovoAligned>> dnList;
+    ArrayList<ArrayList<PSMAligned>> dbList;    //List of db starting at pos
+    ArrayList<ArrayList<PSMAligned>> spiderList;    //List of spider starting at pos
+    ArrayList<ArrayList<DenovoAligned>> dnToRightList; //List of denovo only covering pos whose left end overlapping with template
+    ArrayList<ArrayList<DenovoAligned>> dnToLeftList; //List of denovo only covering pos whose right end overlapping with template
 
     public TemplateHooked(Template template) {
         super(template.getTemplateId(), template.getTemplateAccession(), template.getSeq());
         this.mappedScanList = new ArrayList<>();
         this.dbList = new ArrayList<>();
         this.spiderList = new ArrayList<>();
-        this.dnList = new ArrayList<>();
+        this.dnToLeftList = new ArrayList<>();
+        this.dnToRightList = new ArrayList<>();
         initializeAlignList(this.seq.length);
     }
 
@@ -32,8 +32,12 @@ public class TemplateHooked extends Template {
             ArrayList<PSMAligned> spiderList = new ArrayList<>();
             this.spiderList.add(spiderList);
 
-            ArrayList<DenovoAligned> dnList = new ArrayList<>();
-            this.dnList.add(dnList);
+            ArrayList<DenovoAligned> dnToRightList = new ArrayList<>();
+            this.dnToRightList.add(dnToRightList);
+
+            ArrayList<DenovoAligned> dnToLeftList = new ArrayList<>();
+            this.dnToLeftList.add(dnToLeftList);
+
         }
     }
 
@@ -49,7 +53,11 @@ public class TemplateHooked extends Template {
         return this.mappedScanList;
     }
 
-    public ArrayList<ArrayList<DenovoAligned>> getDnList() {
-        return dnList;
+    public ArrayList<ArrayList<DenovoAligned>> getDnToLeftList() {
+        return dnToLeftList;
+    }
+
+    public ArrayList<ArrayList<DenovoAligned>> getDnToRightList() {
+        return dnToRightList;
     }
 }

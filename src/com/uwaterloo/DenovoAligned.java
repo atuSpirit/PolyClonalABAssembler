@@ -11,6 +11,7 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
     int dnEnd;
     int score;
 
+
     public DenovoAligned(int templateId, int tStart, int tEnd,
                          String dnScan, int dnStart, int dnEnd, int score) {
         this.templateId = templateId;
@@ -21,6 +22,7 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
         this.dnEnd = dnEnd;
         this.score = score;
     }
+
 
     public int getTemplateId() {
         return templateId;
@@ -113,4 +115,26 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
                 dnScan + " " + dnStart + " " + dnEnd + " " + score;
         return dnAlignStr;
     }
+
+    public static Comparator<DenovoAligned> cmpTStart() {
+        return new Comparator<DenovoAligned>() {
+            @Override
+            public int compare(DenovoAligned o1, DenovoAligned o2) {
+                return o1.gettStart() - o2.gettStart();
+            }
+        };
+    }
+
+    //Sort according to tEnd descending.
+    public static Comparator<DenovoAligned> cmpReverseTEnd() {
+        return new Comparator<DenovoAligned>() {
+            @Override
+            public int compare(DenovoAligned o1, DenovoAligned o2) {
+                return o2.gettEnd() - o1.gettEnd();
+            }
+        };
+    }
+
 }
+
+
