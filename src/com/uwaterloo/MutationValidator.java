@@ -257,7 +257,7 @@ public class MutationValidator {
                 spiderList.set(index, null);
             } else {
                 //Debug
-                System.out.println("Debug spider remove scan " + psmAligned.getScan());
+                //System.out.println("Debug spider remove scan " + psmAligned.getScan());
             }
         }
         templateHooked.getSpiderList().set(pos, newSpiderList);
@@ -659,7 +659,6 @@ public class MutationValidator {
                     if (psmAligned == null) {
                         break;
                     }
-
 
                     HashMap<List<Integer>, List<MutationsPattern>> partMutatedAAsOnTemplate = validateOnePSMAligned(templateHooked,
                             psmAligned, scanPSMMap, significantThreshold);

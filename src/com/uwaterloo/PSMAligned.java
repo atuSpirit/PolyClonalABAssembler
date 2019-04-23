@@ -1,6 +1,7 @@
 package com.uwaterloo;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class PSMAligned extends PSM {
@@ -137,5 +138,15 @@ public class PSMAligned extends PSM {
                 " position of variations: " + posOfVar +
                 " start: " + start + " end: " + end;
         return str;
+    }
+
+    public static Comparator<PSMAligned> cmpStart() {
+        return new Comparator<PSMAligned>() {
+            @Override
+            public int compare(PSMAligned o1, PSMAligned o2) {
+                return o1.getStart() - o2.getStart();
+            }
+        };
+
     }
 }
