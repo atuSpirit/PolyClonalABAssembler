@@ -14,7 +14,7 @@ import java.util.*;
 import static com.uwaterloo.Assembler.setIonScoresForPSMList;
 
 public class TemplateCoverage {
-    private List<TemplateHooked> hookTemplates(String dir) {
+    public static List<TemplateHooked> hookTemplates(String dir) {
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -115,7 +115,8 @@ public class TemplateCoverage {
                 //scanSet.addAll(scanList);
 
             }
-            reportString += templateHooked.getTemplateAccession() + "\t" + coveredAANum + "\t" + scanSet.size() +
+            reportString += templateHooked.getTemplateAccession() + "\t" + templateHooked.getSeq().length + "\t"
+                    + coveredAANum + "\t" + scanSet.size() +
                     "\t" + scoreSum + "\t" + confidentAANum + "\t" + moreConfidentAANum + "\n";
             System.out.println(coveredAANum + "," + scanSet.size() + ", " + scoreSum + ", " + confidentAANum +
                     ", " + moreConfidentAANum);
@@ -127,7 +128,7 @@ public class TemplateCoverage {
     private void exportStatitic(String dir, String reportString) {
         String filePath = dir + "statistic.txt";
         try (BufferedWriter br = new BufferedWriter(new FileWriter(filePath))) {
-            br.write("Accession\tcoverage\tpsmNum\ttotalScore\tconfidentAANum\tmoreConfidentAANum\n");
+            br.write("Accession\tseqLen\tcoverage\tpsmNum\ttotalScore\tconfidentAANum\tmoreConfidentAANum\n");
             br.write(reportString);
         } catch (IOException e) {
             e.printStackTrace();
@@ -138,12 +139,14 @@ public class TemplateCoverage {
         String dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_65\\";
         //dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
+        dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
         TemplateCoverage tc = new TemplateCoverage();
         List<TemplateHooked> templateHookedList = tc.hookTemplates(dir);
 
         //Draw the histogram of score of each position in a template, choose 1000 as the threshold whether this position is a confident one.
         int scoreThresh = 1000;
+        scoreThresh = 100;
         String reportString = tc.statistic(templateHookedList, scoreThresh);
 
         tc.exportStatitic(dir, reportString);

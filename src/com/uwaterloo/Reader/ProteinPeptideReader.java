@@ -52,6 +52,7 @@ public class ProteinPeptideReader extends CSVReader {
         int start = Integer.valueOf(fields[fieldIndexMap.get("Start")]) - 1;
         int end = Integer.valueOf(fields[fieldIndexMap.get("End")]) - 1;
         String templateAccession = fields[fieldIndexMap.get("Protein Accession")];
+
         int templateId = this.proteinAccessionsIdMap.get(templateAccession);
 
         TMapPosition tMapPosition = new TMapPosition(templateId, start, end);
@@ -106,6 +107,9 @@ public class ProteinPeptideReader extends CSVReader {
     public HashMap<String, Integer> mapProteinAccessionId(List<Template> templateList) {
         HashMap<String, Integer> proteinAccessionsIdMap = new HashMap<>();
         for (Template t : templateList) {
+            if (t.getTemplateAccession().equals("ab|P00772|CELA1_PIG")) {
+                System.out.println("Debug");
+            }
             proteinAccessionsIdMap.put(t.getTemplateAccession(), t.getTemplateId());
         }
         return proteinAccessionsIdMap;

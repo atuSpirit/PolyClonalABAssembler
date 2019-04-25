@@ -59,4 +59,33 @@ public class DenovoOnlyReader extends CSVReader{
         return new DenovoOnly(scan, peptide, alc, length, confString, intensity);
     }
 
+    /**
+     * Filter out those denovo only containing confScore less than confScoreThresh.
+     * @param dnList
+     * @param confScoreThresh
+     * @return a new dnList with high conf score
+     */
+    public List<DenovoOnly> filterDnByConfScore(List<DenovoOnly> dnList, int confScoreThresh,
+                                                int inConfidentNumThresh) {
+        List<DenovoOnly> newDnList = new ArrayList<>();
+        for (DenovoOnly dn : dnList) {
+            boolean isConfident = true;
+            short[] confScores = dn.getConfScores();
+            int inConfidentNum = 0;
+            for (short confScore : confScores) {
+                if (confScore < confScoreThresh) {
+                    inConfidentNum++;
+                }
+                if (inConfidentNum >= inConfidentNumThresh) {
+                    isConfident = false;
+                    break;
+                }
+            }
+            if (isConfident) {
+                newDnList.add(dn);
+            }
+        }
+        return newDnList;
+    }
+
 }

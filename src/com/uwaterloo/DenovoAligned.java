@@ -135,6 +135,16 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
         };
     }
 
+    //Sort according to score descending.
+    public static Comparator<DenovoAligned> cmpReverseScore() {
+        return new Comparator<DenovoAligned>() {
+            @Override
+            public int compare(DenovoAligned o1, DenovoAligned o2) {
+                return o2.getScore() - o1.getScore();
+            }
+        };
+    }
+
 }
 
 

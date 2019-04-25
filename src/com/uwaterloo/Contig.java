@@ -48,6 +48,15 @@ public class Contig {
         this.score = score;
     }
 
+    public static Comparator<Contig> cmpScore() {
+        return new Comparator<Contig>() {
+            @Override
+            public int compare(Contig o1, Contig o2) {
+                return o1.getScore() - o2.getScore();
+            }
+        };
+    }
+
     public static Comparator<Contig> cmpReverseScore() {
         return new Comparator<Contig>() {
             @Override
