@@ -52,6 +52,9 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
         return score;
     }
 
+    public void setScore(int score) {
+        this.score = score;
+    }
 
     @Override
     public int compareTo(DenovoAligned o) {
@@ -131,6 +134,16 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
             @Override
             public int compare(DenovoAligned o1, DenovoAligned o2) {
                 return o2.gettEnd() - o1.gettEnd();
+            }
+        };
+    }
+
+    //Sort according to score descending.
+    public static Comparator<DenovoAligned> cmpReverseScore() {
+        return new Comparator<DenovoAligned>() {
+            @Override
+            public int compare(DenovoAligned o1, DenovoAligned o2) {
+                return o2.getScore() - o1.getScore();
             }
         };
     }

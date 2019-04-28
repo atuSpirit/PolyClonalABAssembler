@@ -16,12 +16,12 @@ public class Assembler {
         dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_46\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
-        dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_80\\";
-        //dir = "D:\\Hao\\result\\ab19001.5enzymes.new_PEAKS_89\\";
+        dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_86\\";
+        dir = "D:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_46\\";
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
-        dir = "D:\\Hao\\result\\Waters_mAB_SPIDER_97\\";
-        //dir = "D:\\Hao\\result\\Waters_mAB_PEAKS_85\\";
+        //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_20\\";
+        //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -35,8 +35,11 @@ public class Assembler {
         String dnFile = dir + "de novo only peptides.csv";
         DenovoOnlyReader dnReader = new DenovoOnlyReader();
         List<DenovoOnly> dnList = dnReader.readCSVFile(dnFile);
-        System.out.println(dnList.size());
-        System.out.println(dnList.get(0).toString());
+        System.out.println("Read in " + dnList.size() + " denovo only.");
+        int confScoreThresh = 20;
+        int inConfidentAANumThresh = 2;
+        dnList = dnReader.filterDnByConfScore(dnList, confScoreThresh, inConfidentAANumThresh);
+        System.out.println("filtered denovo size: " + dnList.size());
 
         String templateFasta = dir + "Nuno.2016.heavy.template.fasta";
         //templateFasta = dir + "Waters_mAB.template_top4.fasta";
@@ -67,7 +70,7 @@ public class Assembler {
         HashMap<String, DenovoOnly> scanDnMap = buildScanDnMap(dnList);
         //Map Denovo only peptides to templates
         TemplateDenovoAligner dnAligner = new TemplateDenovoAligner(dnList, scanDnMap);
-        short kmerSize = 4;
+        short kmerSize = 6;
         dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
         double significantThreshold = 0.1;
@@ -103,6 +106,7 @@ public class Assembler {
         for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
             List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
             String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
+            if (candidateTemplates == null) continue;   //TODO
             for (int i = 0; i < candidateTemplates.size(); i++) {
                 //Only export template longer than min_template_length to keep only heavy or light chain. Delete fragments.
                 if (candidateTemplates.get(i).length < min_template_length) {
