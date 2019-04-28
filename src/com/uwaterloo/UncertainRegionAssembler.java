@@ -311,6 +311,7 @@ public class UncertainRegionAssembler {
                     Contig mergedContig = new Contig(toRightContig.gettStart(), toLeftContig.gettEnd(),
                                     mergedAA, (toRightContig.getScore() + toLeftContig.getScore()));
                     bridgedContigs.add(mergedContig);
+
                     /*
                     System.out.println("bridge " + new String(seq1) + " " + toRightContig.getScore() + " "
                             + new String(seq2) + " " + toLeftContig.getScore() + " to " + mergedContig.toString());
@@ -318,6 +319,7 @@ public class UncertainRegionAssembler {
                         System.out.println("Insertion");
                     }
                     */
+
                 }
             }
         }
@@ -588,6 +590,8 @@ public class UncertainRegionAssembler {
      * @param assembledContigs
      */
     private void generateCandidateTemplate(TemplateHooked templateHooked, List<Contig> assembledContigs) {
+        System.out.println("Debug:" + templateHooked.getTemplateAccession());
+
         List<Contig> mergedContigs = mergeContigs(assembledContigs);
         Collections.sort(mergedContigs, Contig.cmpScore());
 
@@ -661,6 +665,26 @@ public class UncertainRegionAssembler {
 
     }
 
+    private Set<DenovoAligned> mergeDuplicateDn(Set<DenovoAligned> dnAlignSet, HashMap<String, DenovoOnly> scanDnMap) {
+        Set<DenovoAligned> mergedDnAlignedSet = new HashSet<>();
+        Map<String, DenovoAligned> AADnMap = new HashMap<>();
+        for (DenovoAligned dnAligned : dnAlignSet) {
+            String AAString = new String(scanDnMap.get(dnAligned.getDnScan()).getAAs());
+            if (AADnMap.containsKey(AAString)) {
+                System.out.println("merge " + AAString);
+                AADnMap.get(AAString).setScore(AADnMap.get(AAString).getScore() + dnAligned.getScore());
+
+                //tOdo add confScore
+            } else {
+                AADnMap.put(AAString, dnAligned);
+            }
+        }
+        for (DenovoAligned dnAligned : AADnMap.values()) {
+            mergedDnAlignedSet.add(dnAligned);
+        }
+        return mergedDnAlignedSet;
+    }
+
     public void assembleUncertainRegions(List<TemplateHooked> templateHookedList,
                                          List<HashMap<String, PSMAligned>> listOfscanPSMMap,
                                          HashMap<String, DenovoOnly> scanDnMap,
@@ -681,6 +705,9 @@ public class UncertainRegionAssembler {
             //For each merged uncertain region, generate assembled contigs
             List<Contig> assembledContigs = new ArrayList<>();
             for (UncertainRegion regionToAssemble : mergedUncertainRegions) {
+                //regionToAssemble.setDnAlignToRightSet(mergeDuplicateDn(regionToAssemble.dnAlignToRightSet, scanDnMap));
+                //regionToAssemble.setDnAlignToLeftSet(mergeDuplicateDn(regionToAssemble.dnAlignToLeftSet, scanDnMap));
+
                 assembledContigs.addAll(assembleOneRegion(regionToAssemble, scanDnMap));
             }
 

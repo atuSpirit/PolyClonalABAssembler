@@ -17,10 +17,10 @@ public class Assembler {
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_86\\";
-        dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_PEAKS_85\\";
+        dir = "D:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_46\\";
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
-        dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_20\\";
+        //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_20\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
@@ -75,13 +75,13 @@ public class Assembler {
 
         double significantThreshold = 0.1;
 
-        boolean useDenovo = true;
+        boolean useDenovo = false;
         if (!useDenovo) {
             //Generating candidate templates using DB and Spider PSMs
             generateCandidateTemplates(templateHookedList, listOfScanPSMMap, significantThreshold);
         } else {
             //Generating candidate templates using denovo only results
-            float dbDnRatioThresh = 1.0f;
+            float dbDnRatioThresh = 1.5f;
             UncertainRegionAssembler uncertainRegionAssembler = new UncertainRegionAssembler();
             uncertainRegionAssembler.assembleUncertainRegions(templateHookedList,
                                                 listOfScanPSMMap, scanDnMap, dbDnRatioThresh);
@@ -106,6 +106,7 @@ public class Assembler {
         for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
             List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
             String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
+            if (candidateTemplates == null) continue;   //TODO
             for (int i = 0; i < candidateTemplates.size(); i++) {
                 //Only export template longer than min_template_length to keep only heavy or light chain. Delete fragments.
                 if (candidateTemplates.get(i).length < min_template_length) {

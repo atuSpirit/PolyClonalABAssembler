@@ -47,4 +47,12 @@ public class UncertainRegion {
     public void setEndPos(int endPos) {
         this.endPos = endPos;
     }
+
+    public void setDnAlignToRightSet(Set<DenovoAligned> dnAlignToRightSet) {
+        this.dnAlignToRightSet = dnAlignToRightSet;
+    }
+
+    public void setDnAlignToLeftSet(Set<DenovoAligned> dnAlignToLeftSet) {
+        this.dnAlignToLeftSet = dnAlignToLeftSet;
+    }
 }

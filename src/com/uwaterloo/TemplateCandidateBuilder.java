@@ -255,9 +255,6 @@ public class TemplateCandidateBuilder {
                                                                     HashMap<String, PSMAligned> scanPSMMap) {
         Map<MutationsPattern, MutationsPattern> extendedPatterns = new HashMap<>();
         for (Integer pos : posArray) {
-            if (pos == 47) {
-                System.out.println("Debug in extendPatterns");
-            }
             //Extract all scans covering this position
             List<String> scanList = templateHooked.getMappedScanList().get(pos);
 
@@ -662,12 +659,12 @@ public class TemplateCandidateBuilder {
         MutationsPattern templatePattern = getAAsOnTemplate(templateHooked, posArray, significantAAsPerPos);
         posArray = templatePattern.getPosList();
         System.out.println(posArray.toString());
-        System.out.println(templatePattern.toString());
+        //System.out.println(templatePattern.toString());
 
         System.out.println("Generating candidate templates...");
         List<char[]> candidateTemplates = new ArrayList<>();
-        boolean polyClonal = false;
-        boolean useTopScoreNotIntensity = false;    //true use score, false use intensity
+        boolean polyClonal = true;
+        boolean useTopScoreNotIntensity = true;    //true use score, false use intensity
 
         if (!polyClonal) {
             //For mAB, no need second candidate, pick the candidate with highest score
@@ -842,12 +839,11 @@ public class TemplateCandidateBuilder {
     private List<MutationsPattern> getHomogeneousMutations(TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos,
                                                            String templateAAs) {
         List<MutationsPattern> homogeneousMutations = new ArrayList<>();
-        int i = 0;
+
         for (int pos : significantAAsPerPos.keySet()) {
             if (significantAAsPerPos.get(pos).size() == 1) {
                 homogeneousMutations.addAll(significantAAsPerPos.get(pos));
             }
-            i++;
         }
         return homogeneousMutations;
     }

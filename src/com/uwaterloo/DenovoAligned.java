@@ -52,6 +52,9 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
         return score;
     }
 
+    public void setScore(int score) {
+        this.score = score;
+    }
 
     @Override
     public int compareTo(DenovoAligned o) {
