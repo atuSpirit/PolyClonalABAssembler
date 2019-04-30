@@ -237,11 +237,12 @@ public class TemplatesSelecter {
         }
     }
     public static void main(String[] args) {
-        String dir = "D:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_49\\";
+        String dir = "D:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_55\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
         int topK = 4;
         int scoreThresh = 100;
+        //If selecting from all antibody database, set it less than 1. If choose from template candidate, set it to 1
         float descreaseRatio = 1.0f;
         TemplatesSelecter templatesSelecter = new TemplatesSelecter(topK);
 
