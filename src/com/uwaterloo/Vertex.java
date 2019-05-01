@@ -9,13 +9,13 @@ public class Vertex {
     int pos;
     char AA;
     //MutationsPattern pattern;
-    //List<Edge> inEdges;
+    List<Edge> inEdges;
     List<Edge> outEdges;
 
     public Vertex(int pos, char AA) {
         this.pos = pos;
         this.AA = AA;
-        //inEdges = new ArrayList<>();
+        inEdges = new ArrayList<>();
         outEdges = new ArrayList<>();
     }
 
@@ -40,13 +40,13 @@ public class Vertex {
         return this.pattern;
     }
 
-
+ */
     public List<Edge> getInEdges() {
         return inEdges;
     }
-        */
 
-    public List<Edge> getOutEdge() {
+
+    public List<Edge> getOutEdges() {
         return outEdges;
     }
 

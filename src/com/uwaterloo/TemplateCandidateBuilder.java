@@ -210,7 +210,7 @@ public class TemplateCandidateBuilder {
      * @return The verticesMap is modified. Each vertex is attached with inEdges and outEdges
      *          with proper accumulated weight
      */
-    private void buildEdges(TreeMap<Integer, List<MutationsPattern>> extendedMutationsMap,
+    private List<List<Vertex>> buildEdges(TreeMap<Integer, List<MutationsPattern>> extendedMutationsMap,
                                    TreeMap<Integer, Map<Character, Vertex>> verticesMap,
                                     TemplateHooked templateHooked) {
         for (int startPos : extendedMutationsMap.keySet()) {
@@ -244,7 +244,9 @@ public class TemplateCandidateBuilder {
                     Vertex vertex1 = verticesMap.get(currPos).get(currAA);
                     Vertex vertex2 = verticesMap.get(nextPos).get(nextAA);
                     Edge edge = new Edge(vertex1, vertex2);
-                    addEdgeToVertexEdgeList(edge, extendedMutation.getScore(), vertex1.getOutEdge());
+                    Edge edgeCopy = new Edge(vertex1, vertex2);
+                    addEdgeToVertexEdgeList(edge, extendedMutation.getScore(), vertex1.getOutEdges());
+                    addEdgeToVertexEdgeList(edgeCopy, extendedMutation.getScore(), vertex2.getInEdges());
 
                     currPos = nextPos;
                     currAA = nextAA;
@@ -253,6 +255,17 @@ public class TemplateCandidateBuilder {
             }
         }
 
+        //Store verticesMap to a list of vertexlist at each position.
+        List<List<Vertex>> verticesList = new ArrayList<>();
+        for (int pos : verticesMap.keySet()) {
+            List<Vertex> vertices = new ArrayList<>();
+            Map<Character, Vertex> vertexMap = verticesMap.get(pos);
+            for (Vertex vertex : vertexMap.values()) {
+                vertices.add(vertex);
+            }
+            verticesList.add(vertices);
+        }
+        return verticesList;
     }
 
     private void printEdges(TreeMap<Integer, Map<Character, Vertex>> verticesMap) {
@@ -260,16 +273,98 @@ public class TemplateCandidateBuilder {
             System.out.println("pos " + pos + ":");
             Map<Character, Vertex> vertices = verticesMap.get(pos);
             for (Vertex vertex : vertices.values()) {
-                for (Edge outEdge : vertex.getOutEdge()) {
+                /*
+                System.out.println("Inner edges");
+                for (Edge inEdge : vertex.getInEdges()) {
+                    System.out.println(inEdge.toString());
+                }
+                */
+                System.out.println("Outer edges");
+                for (Edge outEdge : vertex.getOutEdges()) {
                     System.out.println(outEdge.toString());
                 }
+
             }
 
         }
     }
 
-    private List<MutationsPattern> generatePathCombination(TreeMap<Integer, Map<Character, Vertex>> verticesMap, TemplateHooked templateHooked) {
+    /**
+     * For those vertices has no incoming edge, add edge between them and
+     * all of the vertices at previous position.
+     * @param verticesList
+     */
+    private void addConnection(List<List<Vertex>> verticesList) {
+        int index = 0;
+        while (index < (verticesList.size() - 1)) {
+            List<Vertex> preVertices = verticesList.get(index);
+            List<Vertex> nextVertices = verticesList.get(index + 1);
+            for (Vertex nextVertex : nextVertices) {
+                if (nextVertex.getInEdges().size() == 0) {
+                    for (Vertex preVertex : preVertices) {
+                        Edge edge = new Edge(preVertex, nextVertex);
+                        addEdgeToVertexEdgeList(edge, 0, preVertex.getOutEdges());
+                        addEdgeToVertexEdgeList(edge, 0, nextVertex.getInEdges());
+                    }
+                }
+            }
+            index++;
+        }
+    }
+
+    private List<MutationsPattern> generatePathCombination(List<List<Vertex>> verticesList) {
         List<MutationsPattern> pathCombinations = new ArrayList<>();
+
+        //Put all edges from first position
+        int index = 0;
+        for (Vertex vertex : verticesList.get(0)) {
+            for (Edge edge : vertex.getOutEdges()) {
+                List<Integer> posList = new ArrayList<>();
+                posList.add(edge.getStartVertice().getPos());
+                posList.add(edge.getEndVertice().getPos());
+                MutationsPattern prefixPattern = new MutationsPattern(posList,
+                        String.valueOf(edge.getStartVertice().getAA()) + String.valueOf(edge.getEndVertice().getAA()),
+                                                0, edge.getWeight());
+                pathCombinations.add(prefixPattern);
+            }
+        }
+        //Append AA from each position to pathCombination
+        index = 1;
+        while (index < (verticesList.size() - 1)) {
+            List<MutationsPattern> newAddedPrefixPattern = new ArrayList<>();
+            for (Vertex vertex1 : verticesList.get(index)) {
+                for (MutationsPattern prefixPattern : pathCombinations) {
+                    //Find the prefix whose suffix AA is same as vertex1.AA to extend
+                    if (prefixPattern.getAAs().endsWith(String.valueOf(vertex1.getAA()))) {
+                        int edgeIndex = 0;
+                        //If vertex1.getOutEdges contain more than one edge, need to clone new prefixPattern
+                        while (edgeIndex < (vertex1.getOutEdges().size() - 1)) {
+                            Edge edge = vertex1.getOutEdges().get(edgeIndex);
+                            Vertex vertex2 = edge.getEndVertice();
+                            List<Integer> newPosList = new ArrayList<>();
+                            for (int pos : prefixPattern.getPosList()) {
+                                newPosList.add(pos);
+                            }
+                            newPosList.add(vertex2.getPos());
+                            MutationsPattern prefixCopy = new MutationsPattern(newPosList,
+                                    prefixPattern.getAAs() + String.valueOf(vertex2.getAA()),
+                                    prefixPattern.getFreq(),
+                                    prefixPattern.getScore() + edge.getWeight());
+                            newAddedPrefixPattern.add(prefixCopy);
+                            edgeIndex++;
+                        }
+
+                        Edge edge = vertex1.getOutEdges().get(edgeIndex);
+                        Vertex vertex2 = edge.getEndVertice();
+                        prefixPattern.getPosList().add(vertex2.getPos());
+                        prefixPattern.setAAs(prefixPattern.getAAs() + vertex2.getAA());
+                        prefixPattern.setScore(prefixPattern.getScore() + edge.getWeight());
+                    }
+                }
+            }
+            pathCombinations.addAll(newAddedPrefixPattern);
+            index++;
+        }
         return pathCombinations;
     }
 
@@ -689,9 +784,21 @@ public class TemplateCandidateBuilder {
                 System.out.println("Building vertices...");
                 TreeMap<Integer, Map<Character, Vertex>> verticesMap = buildVertice(significantAAsPerPos);
                 System.out.println("Building Edges...");
-                buildEdges(extendedMutations, verticesMap, templateHooked);
+                List<List<Vertex>> verticesList = buildEdges(extendedMutations, verticesMap, templateHooked);
+                addConnection(verticesList);
                 //printEdges(verticesMap);
-                List<MutationsPattern> pathCombination = generatePathCombination(verticesMap, templateHooked);
+                List<MutationsPattern> pathCombination = generatePathCombination(verticesList);
+
+                Collections.sort(pathCombination, MutationsPattern.cmpReverseScore());
+                System.out.println(templateHooked.getTemplateAccession());
+                System.out.println("candidate number: " + pathCombination.size());
+                for (MutationsPattern path : pathCombination) {
+                    System.out.println(path.toString());
+                    List<MutationsPattern> pathList = new ArrayList<>();
+                    pathList.add(path);
+                    char[] candidateTemplate = getCandidateTemplate(templateHooked, pathList);
+                    candidateTemplates.add(candidateTemplate);
+                }
 
             }
 

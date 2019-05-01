@@ -3,10 +3,7 @@ package com.uwaterloo;
 import org.junit.Test;
 import org.junit.Assert.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class MutationsPattern {
     List<Integer> posList;
@@ -136,6 +133,21 @@ public class MutationsPattern {
         boolean isEqual = (pattern1.equals(pattern2));
         System.out.println(isEqual);
 
+    }
+
+    @Override
+    public MutationsPattern clone() {
+        MutationsPattern copy = new MutationsPattern(posList, AAs, freq, score, intensitySet);
+        return copy;
+    }
+
+    public static Comparator<MutationsPattern> cmpReverseScore() {
+        return new Comparator<MutationsPattern>() {
+            @Override
+            public int compare(MutationsPattern o1, MutationsPattern o2) {
+                return o2.getScore() - o1.getScore();
+            }
+        };
     }
 
 }

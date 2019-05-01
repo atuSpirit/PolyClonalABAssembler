@@ -3,14 +3,14 @@ package com.uwaterloo;
 public class Edge {
     Vertex startVertice;
     Vertex endVertice;
-    long weight;
+    int weight;
 
     public Edge(Vertex startVertice, Vertex endVertice) {
         this.startVertice = startVertice;
         this.endVertice = endVertice;
     }
 
-    public Edge(Vertex startVertice, Vertex endVertice, long weight) {
+    public Edge(Vertex startVertice, Vertex endVertice, int weight) {
         this.startVertice = startVertice;
         this.endVertice = endVertice;
         this.weight = weight;
@@ -24,11 +24,11 @@ public class Edge {
         return endVertice;
     }
 
-    public long getWeight() {
+    public int getWeight() {
         return weight;
     }
 
-    public void setWeight(long weight) {
+    public void setWeight(int weight) {
         this.weight = weight;
     }
 

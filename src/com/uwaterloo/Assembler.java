@@ -17,7 +17,7 @@ public class Assembler {
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_86\\";
-        dir = "D:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_37\\";
+        dir = "/Users/hao/data/ab19001.polyclonal.templateSelected_SPIDER_37/";
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_20\\";
@@ -89,12 +89,12 @@ public class Assembler {
 
         //Export candidate templates together with contaminant sequences as a fasta file
         String contaminantFile = "D:\\Hao\\database\\contaminants.fasta";
-        //contaminantFile = "/Users/hao/data/contaminants.fasta";
+        contaminantFile = "/Users/hao/data/contaminants.fasta";
         String candidateTemplateWithContaminant = "D:\\Hao\\result\\database\\candidate_template_with_contaminant.fasta";
         //candidateTemplateWithContaminant = "/Users/hao/data/candidate_template_with_contaminant.fasta";
         int min_template_length = 0;  //If a template length is shorter than the min_length, don't output it.
 
-        //exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
+        exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
 
     }
 
