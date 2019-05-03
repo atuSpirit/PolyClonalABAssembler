@@ -222,10 +222,10 @@ public class MutationValidator {
             if (ratio > threshold) {
                 significantMutatedPattern.add(pattern);
                 //Debug
-                System.out.printf("Debug %s %.4f\n", pattern, score / total);
+                //System.out.printf("Debug %s %.4f\n", pattern, score / total);
             } else {
                 //Debug
-                System.out.printf("Debug unsignificant %s %.4f\n", pattern, score / total);
+                //System.out.printf("Debug unsignificant %s %.4f\n", pattern, score / total);
             }
         }
 

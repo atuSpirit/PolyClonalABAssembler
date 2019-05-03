@@ -17,7 +17,13 @@ public class Assembler {
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_86\\";
+
         dir = "/Users/hao/data/ab19001.polyclonal.templateSelected_SPIDER_37/";
+
+        dir = "C:\\Hao\\result\\ab19001.1_SPIDER_29\\";
+        //dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_37\\";
+        //dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_19\\";
+
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_20\\";
@@ -75,7 +81,7 @@ public class Assembler {
 
         double significantThreshold = 0.1;
 
-        boolean useDenovo = false;
+        boolean useDenovo = true;
         if (!useDenovo) {
             //Generating candidate templates using DB and Spider PSMs
             generateCandidateTemplates(templateHookedList, listOfScanPSMMap, significantThreshold);
@@ -90,10 +96,15 @@ public class Assembler {
         //Export candidate templates together with contaminant sequences as a fasta file
         String contaminantFile = "D:\\Hao\\database\\contaminants.fasta";
         contaminantFile = "/Users/hao/data/contaminants.fasta";
-        String candidateTemplateWithContaminant = "D:\\Hao\\result\\database\\candidate_template_with_contaminant.fasta";
+
+        contaminantFile = "C:\\hao\\database\\contaminants.fasta";
+        //contaminantFile = "/Users/hao/data/contaminants.fasta";
+        String candidateTemplateWithContaminant = "C:\\Hao\\database\\candidate_template_with_contaminant.fasta";
+
         //candidateTemplateWithContaminant = "/Users/hao/data/candidate_template_with_contaminant.fasta";
         int min_template_length = 0;  //If a template length is shorter than the min_length, don't output it.
 
+        System.out.println("Exporting candidate templates: ");
         exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
 
     }
@@ -102,60 +113,69 @@ public class Assembler {
     /* Export candidate templates together with contaminant sequences as a fasta file */
     private void exportCandidateTemplates(List<TemplateHooked> templateHookedList, int min_template_length,
                                           String candidateTemplateWithContaminant, String contaminantFile) {
-        String seqsToExport = "";
-        for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
-            List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
-            String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
-            if (candidateTemplates == null) {
-                //If no candidate, means no change need to make to the template, export the template directly
-                System.out.println(">" + templateAccession);
-                System.out.println(new String(templateHookedList.get(templateId).getSeq()));
-                seqsToExport += ">" + templateAccession + "\n";
-                seqsToExport += new String(templateHookedList.get(templateId).getSeq()) + "\n";
-                continue;
-            }
-            for (int i = 0; i < candidateTemplates.size(); i++) {
-                //Only export template longer than min_template_length to keep only heavy or light chain. Delete fragments.
-                if (candidateTemplates.get(i).length < min_template_length) {
-                    continue;
-                }
-
-                if (candidateTemplates.size() < 2) {
-                    System.out.println(">" + templateAccession);
-                    System.out.println(new String(candidateTemplates.get(i)));
-                    seqsToExport += ">" + templateAccession + "\n";
-                    seqsToExport += new String(candidateTemplates.get(i)) + "\n";
-                } else {
-                    System.out.println(">can" + (i + 1) + "_" + templateAccession);
-                    System.out.println(new String(candidateTemplates.get(i)));
-                    seqsToExport += ">can" + (i + 1) + "_" + templateAccession + "\n";
-                    seqsToExport += new String(candidateTemplates.get(i)) + "\n";
-                }
-            }
-            //Debug
-            //break;
-        }
-
-        //Attach the contaminant sequences
-        String contaminantSeqs = null;
-        try (BufferedReader br = new BufferedReader(new FileReader(contaminantFile))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                seqsToExport += line + "\n";
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
         //Export the sequences to a file
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(candidateTemplateWithContaminant))) {
-            bw.write(seqsToExport);
+
+            for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
+                List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
+                String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
+                if (candidateTemplates == null) {
+                    //If no candidate, means no change need to make to the template, export the template directly
+                    System.out.println(">" + templateAccession);
+                    System.out.println(new String(templateHookedList.get(templateId).getSeq()));
+                    bw.write(">" + templateAccession);
+                    bw.write("\n");
+                    bw.write(new String(templateHookedList.get(templateId).getSeq()));
+                    bw.write("\n");
+                    continue;
+                }
+                for (int i = 0; i < candidateTemplates.size(); i++) {
+                    //Only export template longer than min_template_length to keep only heavy or light chain. Delete fragments.
+                    if (candidateTemplates.get(i).length < min_template_length) {
+                        continue;
+                    }
+
+                    if (candidateTemplates.size() < 2) {
+                        System.out.println(">" + templateAccession);
+                        System.out.println(new String(candidateTemplates.get(i)));
+                        bw.write(">" + templateAccession);
+                        bw.write("\n");
+                        bw.write(new String(candidateTemplates.get(i)));
+                        bw.write("\n");
+                    } else {
+                        // System.out.println(">can" + (i + 1) + "_" + templateAccession);
+                        // System.out.println(new String(candidateTemplates.get(i)));
+                        bw.write(">can" + (i + 1) + "_" + templateAccession);
+                        bw.write("\n");
+                        bw.write(new String(candidateTemplates.get(i)));
+                        bw.write("\n");
+                    }
+                }
+                //Debug
+                //break;
+            }
+
+            //Attach the contaminant sequences
+            String contaminantSeqs = null;
+            try (BufferedReader br = new BufferedReader(new FileReader(contaminantFile))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    bw.write(line);
+                    bw.write("\n");
+                }
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
+
+
     /*
     Attach the candidate templates to the mutated templates in templateHookedList
      */
