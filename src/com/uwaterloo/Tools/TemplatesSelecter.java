@@ -241,14 +241,15 @@ public class TemplatesSelecter {
         String dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_49\\";
         dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_12\\";
         dir = "C:\\Hao\\result\\ab19001.1_SPIDER_32\\";
+        dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_12\\";
 
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
-        int topK = 8;
-        int scoreThresh = 1000;
+        int topK = 4;
+        int scoreThresh = 100;
 
         //If selecting from all antibody database, set it less than 1. If choose from template candidate, set it to 1
-        float descreaseRatio = 0.3f;
+        float descreaseRatio = 0.1f;
 
         TemplatesSelecter templatesSelecter = new TemplatesSelecter(topK);
 
@@ -271,8 +272,6 @@ public class TemplatesSelecter {
                                         dir, topK, scoreThresh, descreaseRatio);
         String lcFastaFile = dir + "light.top" + topK + ".fasta";
         templatesSelecter.exportFasta(lcFastaFile, topKLightTemplates);
-
-
 
 
     }

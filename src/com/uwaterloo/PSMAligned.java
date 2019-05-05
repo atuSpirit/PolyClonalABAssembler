@@ -36,7 +36,11 @@ public class PSMAligned extends PSM {
         setPositionOfVariations(peptide);
         this.start = start;
         this.end = end;
-        this.ionScores = ionScores;
+        if (peptide.contains("del")) {
+            this.ionScores = modifyIonScoreForDeletion(AAs, ionScores);
+        } else {
+            this.ionScores = ionScores;
+        }
     }
 
 
@@ -44,13 +48,33 @@ public class PSMAligned extends PSM {
         //Remove all PTM
         peptide = peptide.replaceAll("\\(\\S(\\d)*.(\\d)+\\)", "");
 
-        //Remove all ins|del|sub
+        //Remove all ins|del|sub, for del, substitute with a -
         peptide = peptide.replaceAll("\\(sub \\S\\)", "");
         peptide = peptide.replaceAll("\\(ins\\)", "");
-        peptide = peptide.replaceAll("\\(del\\)", "");
+        peptide = peptide.replaceAll("\\(del \\S\\)", "-");
 
         return peptide.toCharArray();
     }
+
+    private static short[] modifyIonScoreForDeletion(char[] AAs, short[] ionScores) {
+        int length = AAs.length;
+        short[] newIonScores = new short[length];
+        int index = 0;
+        for (int i = 0; i < length; i++) {
+            if (AAs[i] == '-') {
+                if (index > 0) {
+                    newIonScores[i] = (short) ((ionScores[index - 1] + ionScores[index]) / 2);
+                } else {
+                    newIonScores[i] = ionScores[index];
+                }
+            } else {
+                newIonScores[i] = ionScores[index];
+                index++;
+            }
+        }
+        return newIonScores;
+    }
+
 
     private short[] convertToConfScore(char[] AAs) {
         int length = AAs.length;

@@ -467,12 +467,13 @@ public class MutationValidator {
         int start = psmAligned.getStart();
         int end = psmAligned.getEnd() - start;
 
+        /*
         if (psmAligned.getPeptide().contains("del")) {
             System.err.println("Error in extractAAComb() : scan " + psmAligned.getScan() +
                     " contains del " + psmAligned.getPeptide());
             //TODO: to deal with del part
             return null;
-        }
+        } */
 
         int size = posList.size();
         char[] AAComb = new char[size];

@@ -23,6 +23,7 @@ public class Assembler {
         dir = "C:\\Hao\\result\\ab19001.1_SPIDER_29\\";
         //dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_37\\";
         //dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_19\\";
+        dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_15\\";
 
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
@@ -81,7 +82,7 @@ public class Assembler {
 
         double significantThreshold = 0.1;
 
-        boolean useDenovo = true;
+        boolean useDenovo = false;
         if (!useDenovo) {
             //Generating candidate templates using DB and Spider PSMs
             generateCandidateTemplates(templateHookedList, listOfScanPSMMap, significantThreshold);
@@ -202,12 +203,19 @@ public class Assembler {
         for (int i = 0; i < psmList.size(); i++) {
             String scan = psmList.get(i).getScan();
             if (scanIonScoresMap.containsKey(scan)) {
-                psmList.get(i).setIonScores(scanIonScoresMap.get(scan));
+                short[] ionScores = scanIonScoresMap.get(scan);
+                /*
+                if (psmList.get(i).getPeptide().contains("-")) {
+                    ionScores = modifyIonScoreForDeletion(psmList.get(i).getPeptide(), ionScores);
+                }*/
+                psmList.get(i).setIonScores(ionScores);
             } else {
                 System.err.println("scan " + scan + " does not contain fragment ions information!");
             }
         }
     }
+
+
     /* Trim the C end of candidate template if no reads covered the C end */
     private void trimTemplateCEnd(TemplateHooked aTemplateHooked, List<char[]> topCandidateTemplates) {
         int pos = 0;
