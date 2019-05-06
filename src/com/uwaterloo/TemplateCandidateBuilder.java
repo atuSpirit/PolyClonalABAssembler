@@ -779,6 +779,7 @@ public class TemplateCandidateBuilder {
 
         printMutationsAlongPos(significantAAsPerPos);
 
+
         /* Sum up the intensity for each variation of each position. If an intensity appears multiple times,
             they might be from the same feature.  Then it should be counted only once.
          */
@@ -796,6 +797,13 @@ public class TemplateCandidateBuilder {
 
         System.out.println("Generating candidate templates...");
         List<char[]> candidateTemplates = new ArrayList<>();
+        //If there is no significant mutations, return the original templateHooked.
+        if (significantAAsPerPos.size() == 0) {
+            candidateTemplates.add(templateHooked.getSeq());
+            return candidateTemplates;
+        }
+
+
         boolean polyClonal = true;
         boolean graphAssembly = true;
         boolean useTopScoreNotIntensity = false;    //true use score, false use intensity
@@ -815,7 +823,7 @@ public class TemplateCandidateBuilder {
             candidateTemplates.add(candidateTemplate1);
         } else {
             //For Polyclonal, each template might diverge into three.
-            boolean homo = true;
+            boolean homo = false;
 
             if (homo) {
                 //Apply homogeneous mutations to template to generate one candidate template

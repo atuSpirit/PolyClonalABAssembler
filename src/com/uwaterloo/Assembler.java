@@ -23,7 +23,7 @@ public class Assembler {
         dir = "C:\\Hao\\result\\ab19001.1_SPIDER_29\\";
         //dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_37\\";
         //dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_19\\";
-        dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_15\\";
+        //dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_18\\";
 
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
@@ -80,7 +80,7 @@ public class Assembler {
         short kmerSize = 6;
         dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
-        double significantThreshold = 0.1;
+        double significantThreshold = 0.2;  //Increase from 0.1 to 0.2 for Nuno data which is less accurate
 
         boolean useDenovo = false;
         if (!useDenovo) {
