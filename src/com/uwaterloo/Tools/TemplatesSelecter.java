@@ -236,6 +236,8 @@ public class TemplatesSelecter {
             e.printStackTrace();
         }
     }
+
+
     public static void main(String[] args) {
 
         String dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_49\\";

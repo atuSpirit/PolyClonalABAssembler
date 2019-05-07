@@ -20,7 +20,7 @@ public class Assembler {
 
         dir = "/Users/hao/data/ab19001.polyclonal.templateSelected_SPIDER_37/";
 
-        dir = "C:\\Hao\\result\\ab19001.1_SPIDER_29\\";
+        dir = "C:\\Hao\\result\\ab19001.polyclonal.05.05_SPIDER_13\\";
         //dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_37\\";
         //dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_19\\";
         //dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_18\\";
@@ -147,8 +147,19 @@ public class Assembler {
                         // System.out.println(">can" + (i + 1) + "_" + templateAccession);
                         // System.out.println(new String(candidateTemplates.get(i)));
                         bw.write(">can" + (i + 1) + "_" + templateAccession);
-                        bw.write("\n");
-                        bw.write(new String(candidateTemplates.get(i)));
+
+                        if (candidateTemplates.get(i)[0] != '>') {
+                            bw.write("\n");
+                            bw.write(new String(candidateTemplates.get(i)));
+                        } else {
+                            String candidateTemplateWithInfo = new String(candidateTemplates.get(i));
+                            String[] fields = candidateTemplateWithInfo.split(">");
+                            String infoString = fields[1];
+                            String templateString = fields[2];
+                            bw.write("_" + infoString + "\n");
+                            bw.write(templateString);
+                        }
+
                         bw.write("\n");
                     }
                 }

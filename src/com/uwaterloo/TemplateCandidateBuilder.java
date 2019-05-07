@@ -92,6 +92,7 @@ public class TemplateCandidateBuilder {
                 candidateTemplate[posList.get(i)] = pattern.charAt(i);
             }
         }
+
         //System.out.println(new String(candidateTemplate));
         return candidateTemplate;
     }
@@ -142,6 +143,7 @@ public class TemplateCandidateBuilder {
                                     TreeMap<Integer, Map<Character, Vertex>> verticesMap) {
         List<Integer> posList = new ArrayList<>();
         String AAs = "";
+
         for (int pos : verticesMap.keySet()) {
             char templateAA = templateHooked.getSeq()[pos];
 
@@ -150,10 +152,17 @@ public class TemplateCandidateBuilder {
                 AAs += templateAA;
             } else {
                 MutationsPattern templatePattern = new MutationsPattern(posList, AAs, 1, 1);
-                if (posList.size() == 0) {
+                if (posList.size() < 2) {
                     continue;
                 }
-                extendedMutations.get(posList.get(0)).add(templatePattern);
+
+                if (extendedMutations.containsKey(posList.get(0))) {
+                    extendedMutations.get(posList.get(0)).add(templatePattern);
+                } else {
+                    List<MutationsPattern> list = new ArrayList<>();
+                    list.add(templatePattern);
+                    extendedMutations.put(posList.get(0), list);
+                }
 
                 posList = new ArrayList<>();
                 AAs = "";
@@ -880,7 +889,10 @@ public class TemplateCandidateBuilder {
                     List<MutationsPattern> pathList = new ArrayList<>();
                     pathList.add(path);
                     char[] candidateTemplate = getCandidateTemplate(templateHooked, pathList);
-                    candidateTemplates.add(candidateTemplate);
+                    String infoString = ">" + path.toString() +">";
+                    char[] candidateTemplateWithInfo = (infoString + new String(candidateTemplate)).toCharArray();
+                    //candidateTemplates.add(candidateTemplate);
+                    candidateTemplates.add(candidateTemplateWithInfo);
                 }
 
             }
