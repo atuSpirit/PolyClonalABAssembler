@@ -8,6 +8,7 @@ import java.util.List;
 public class TemplatePSMsAligner {
     /* Each template contain a PSMAlignList storing psms mapped to it. */
     ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList;
+    List<TemplateHooked> templateHookedList;
     /**
      * Building the list of PSM aligned.
      * According to the psm's peptide sequence, find its mapping position
@@ -81,13 +82,17 @@ public class TemplatePSMsAligner {
         int templateNum = templateList.size();
         buildListOfPSMAligned(templateNum, psmList, peptideProteinMap);
 
-        ArrayList<TemplateHooked> templateHookedList = new ArrayList<>();
+        this.templateHookedList = new ArrayList<>();
         for (int i = 0; i < templateNum; i++) {
             TemplateHooked templateHooked = hookPSMsToTemplate(templateList.get(i),
                     listOfPSMAlignedList.get(i));
-            templateHookedList.add(templateHooked);
+            this.templateHookedList.add(templateHooked);
         }
 
+        return this.templateHookedList;
+    }
+
+    public List<TemplateHooked> getTemplateHookedList() {
         return templateHookedList;
     }
 

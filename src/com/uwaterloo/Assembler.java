@@ -20,7 +20,7 @@ public class Assembler {
 
         dir = "/Users/hao/data/ab19001.polyclonal.templateSelected_SPIDER_37/";
 
-        dir = "C:\\Hao\\result\\ab19001.polyclonal.05.05_SPIDER_13\\";
+        //dir = "C:\\Hao\\result\\ab19001.polyclonal.05.05_SPIDER_13\\";
         //dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_37\\";
         //dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_19\\";
         //dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_18\\";
@@ -99,10 +99,10 @@ public class Assembler {
         contaminantFile = "/Users/hao/data/contaminants.fasta";
 
         contaminantFile = "C:\\hao\\database\\contaminants.fasta";
-        //contaminantFile = "/Users/hao/data/contaminants.fasta";
+        contaminantFile = "/Users/hao/data/contaminants.fasta";
         String candidateTemplateWithContaminant = "C:\\Hao\\database\\candidate_template_with_contaminant.fasta";
 
-        //candidateTemplateWithContaminant = "/Users/hao/data/candidate_template_with_contaminant.fasta";
+        candidateTemplateWithContaminant = "/Users/hao/data/candidate_template_with_contaminant.fasta";
         int min_template_length = 0;  //If a template length is shorter than the min_length, don't output it.
 
         System.out.println("Exporting candidate templates: ");

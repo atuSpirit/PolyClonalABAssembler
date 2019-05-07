@@ -5,6 +5,10 @@ import java.util.*;
 public class TemplateCandidateBuilder {
     List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsList;
 
+    public TemplateCandidateBuilder() {
+
+    }
+
     public TemplateCandidateBuilder(List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsList) {
         this.mutationsList = mutationsList;
     }
@@ -261,7 +265,7 @@ public class TemplateCandidateBuilder {
      * @return The verticesMap is modified. Each vertex is attached with inEdges and outEdges
      *          with proper accumulated weight
      */
-    private List<List<Vertex>> buildEdges(TreeMap<Integer, List<MutationsPattern>> extendedMutationsMap,
+    public List<List<Vertex>> buildEdges(TreeMap<Integer, List<MutationsPattern>> extendedMutationsMap,
                                    TreeMap<Integer, Map<Character, Vertex>> verticesMap,
                                     TemplateHooked templateHooked) {
         for (int startPos : extendedMutationsMap.keySet()) {
@@ -319,7 +323,7 @@ public class TemplateCandidateBuilder {
         return verticesList;
     }
 
-    private void printEdges(TreeMap<Integer, Map<Character, Vertex>> verticesMap) {
+    public void printEdges(TreeMap<Integer, Map<Character, Vertex>> verticesMap) {
         for (int pos : verticesMap.keySet()) {
             System.out.println("pos " + pos + ":");
             Map<Character, Vertex> vertices = verticesMap.get(pos);
@@ -384,7 +388,7 @@ public class TemplateCandidateBuilder {
         }
     }
 
-    private List<MutationsPattern> generatePathCombination(List<List<Vertex>> verticesList) {
+    public List<MutationsPattern> generatePathCombination(List<List<Vertex>> verticesList) {
         List<MutationsPattern> pathCombinations = new ArrayList<>();
 
         //Put all edges from first position
@@ -515,7 +519,7 @@ public class TemplateCandidateBuilder {
      * significant mutation has been removed in MutationValidator. Since each mutation pattern
      * is extracted from a scan based on posArray, it cannot be extended any more.
      */
-    private TreeMap<Integer, List<MutationsPattern>> extendPatterns(List<Integer> posArray, TemplateHooked templateHooked,
+    public TreeMap<Integer, List<MutationsPattern>> extendPatterns(List<Integer> posArray, TemplateHooked templateHooked,
                                                                     HashMap<String, PSMAligned> scanPSMMap) {
         Map<MutationsPattern, MutationsPattern> extendedPatterns = new HashMap<>();
         Set<String> checkScanSet = new HashSet<>();
