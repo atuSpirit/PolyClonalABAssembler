@@ -6,6 +6,7 @@ import com.uwaterloo.Reader.PSMReader;
 import com.uwaterloo.Reader.ProteinPeptideReader;
 import com.uwaterloo.Reader.TemplatesLoader;
 
+import java.io.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,10 +23,18 @@ public class CandidateTemplateValidater {
     public static void main(String[] args) {
         CandidateTemplateValidater candidateTemplateValidater = new CandidateTemplateValidater();
 
-        String dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_49\\";
+        String dir = "C:\\hao\\result\\ab19001.polyclonal.05.05_SPIDER_16\\";
+        dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_30\\";
+        String contaminantFile = "C:\\hao\\database\\contaminants.fasta";
+        String candidateTemplateWithContaminant = "C:\\Hao\\database\\candidate_template_with_contaminant.fasta";
+
         TemplatePSMsAligner psmsAligner = candidateTemplateValidater.initialize(dir);
         List<TemplateHooked> templateHookedList = psmsAligner.getTemplateHookedList();
         ArrayList<ArrayList<PSMAligned>> listOfPSMAlignedList = psmsAligner.getPsmAlignedList();
+
+        String templateFile = dir + "proteins.fasta";
+        List<MutationsPattern> templatePatternList = candidateTemplateValidater.parseTemplateAccessionInfo(templateFile);
+        System.out.println("Candidate Template number: " + templatePatternList.size());
 
         List<TemplateHooked> validatedTemplateHookedList = new ArrayList<>();
 
@@ -40,13 +49,20 @@ public class CandidateTemplateValidater {
 
         for (int i = 0; i < templateHookedList.size(); i++) {
             TemplateHooked templateHooked = templateHookedList.get(i);
+            MutationsPattern templatePattern = templatePatternList.get(i);
             HashMap<String, PSMAligned> scanPSMMap = listOfScanPSMMap.get(i);
-            boolean isValidateTemplate = candidateTemplateValidater.validateTemplate(templateHooked, scanPSMMap);
-            if (isValidateTemplate) {
+            int scoreDiff = candidateTemplateValidater.validateTemplate(templateHooked, scanPSMMap, templatePattern);
+            if (scoreDiff > 0) {
+                templateHooked.setTemplateAccession(templateHooked.getTemplateAccession() + "_scoreIncrease_" +  scoreDiff);
                 validatedTemplateHookedList.add(templateHooked);
             }
         }
+        System.out.println("Validated candidate template number: " + validatedTemplateHookedList.size());
 
+        for (TemplateHooked templateHooked : validatedTemplateHookedList) {
+            System.out.println(templateHooked.getTemplateAccession());
+        }
+        candidateTemplateValidater.exportValidTemplates(validatedTemplateHookedList, candidateTemplateWithContaminant, contaminantFile);
     }
 
     private TemplatePSMsAligner initialize(String dir) {
@@ -74,12 +90,36 @@ public class CandidateTemplateValidater {
         return psmAligner;
     }
 
+    private List<MutationsPattern> parseTemplateAccessionInfo(String templateFastaFile) {
+        List<MutationsPattern> templatePatterns = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(templateFastaFile))) {
+            String line;
+
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith(">")) {
+                    String[] fields = line.split("_");
+                    String info = fields[fields.length - 1];
+                    MutationsPattern templatePattern = parseInfo(info);
+                    templatePatterns.add(templatePattern);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return templatePatterns;
+
+    }
+
+
     private MutationsPattern parseInfo(String info) {
-        Pattern p = Pattern.compile("(\\S+)\\sat\\s[(\\.+)]\\sfreq:\\s(\\d+)\\sscore:\\s(\\d+)\\sintensity:\\s(\\d+)");
+        Pattern p = Pattern.compile("(\\S+)\\sat\\s\\[(.+)\\]\\sfreq:\\s(\\d+)\\sscore:\\s(\\d+)\\sintensity:\\s(\\d+)");
         Matcher m = p.matcher(info);
         if (m.find()) {
             String AAs = m.group(1);
-            String[] posStrings = m.group(2).split(",");
+            String[] posStrings = m.group(2).split(", ");
             List<Integer> posList = new ArrayList<>();
             for (String posString : posStrings) {
                 posList.add(Integer.valueOf(posString));
@@ -97,12 +137,15 @@ public class CandidateTemplateValidater {
 
     }
 
-    private boolean validateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap) {
-        String templateAccession = templateHooked.getTemplateAccession();
-        String[] fields = templateAccession.split("_");
-        String info = fields[fields.length - 1];
-
-        MutationsPattern templatePattern = parseInfo(info);
+    /**
+     * Return the new path score - old path score.  If decrease, it for sure is not a good path combination, discard.
+     * @param templateHooked
+     * @param scanPSMMap
+     * @param templatePattern
+     * @return
+     */
+    private int validateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap,
+                                     MutationsPattern templatePattern) {
         List<Integer> posArray = templatePattern.getPosList();
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder();
@@ -110,14 +153,12 @@ public class CandidateTemplateValidater {
 
         TreeMap<Integer, Map<Character, Vertex>> verticesMap = buildTemplateVertice(templatePattern);
         List<List<Vertex>> verticesList = templateCandidateBuilder.buildEdges(extendedMutations, verticesMap, templateHooked);
-        templateCandidateBuilder.printEdges(verticesMap);
+        templateCandidateBuilder.addConnection(verticesList);
+        //templateCandidateBuilder.printEdges(verticesMap);
         List<MutationsPattern> pathCombination = templateCandidateBuilder.generatePathCombination(verticesList);
 
-        for (MutationsPattern mutationsPattern : pathCombination) {
-            System.out.println(mutationsPattern.toString());
-        }
-
-        return pathCombination.get(0).getScore() > templatePattern.getScore();
+        //The pathCombination should contain only one mutationPatter, the templateMutationPattern
+        return (pathCombination.get(0).getScore() - templatePattern.getScore());
     }
 
     /**
@@ -127,9 +168,10 @@ public class CandidateTemplateValidater {
      */
     private TreeMap<Integer, Map<Character, Vertex>> buildTemplateVertice(MutationsPattern templateMutationPattern) {
         TreeMap<Integer, Map<Character, Vertex>> vertexesMap = new TreeMap<>();
-        for (int pos : templateMutationPattern.getPosList()) {
+        for (int i = 0; i < templateMutationPattern.getPosList().size(); i++) {
+            int pos = templateMutationPattern.getPosList().get(i);
             Map<Character, Vertex> vertices = new HashMap<>();
-            char AA = templateMutationPattern.getAAs().charAt(pos);
+            char AA = templateMutationPattern.getAAs().charAt(i);
             Vertex v = new Vertex(pos, AA);
             vertices.put(AA, v);
 
@@ -139,4 +181,33 @@ public class CandidateTemplateValidater {
     }
 
 
+    private void exportValidTemplates(List<TemplateHooked> templateHookedList,
+                                      String candidateTemplateWithContaminant, String contaminantFile) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(candidateTemplateWithContaminant))) {
+
+            for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
+                bw.write(">" + templateHookedList.get(templateId).getTemplateAccession());
+                bw.write("\n");
+                bw.write(new String(templateHookedList.get(templateId).getSeq()));
+                bw.write("\n");
+            }
+
+            //Attach the contaminant sequences
+            String contaminantSeqs = null;
+            try (BufferedReader br = new BufferedReader(new FileReader(contaminantFile))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    bw.write(line);
+                    bw.write("\n");
+                }
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (IOException e) {
+        e.printStackTrace();
+        }
+
+    }
 }

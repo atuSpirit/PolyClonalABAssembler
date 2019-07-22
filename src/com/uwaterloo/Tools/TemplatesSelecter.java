@@ -245,6 +245,8 @@ public class TemplatesSelecter {
         dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_12\\";
         dir = "C:\\Hao\\result\\ab19001.1_SPIDER_32\\";
         dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_12\\";
+        dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_22\\";
+        dir = "C:\\hao\\result\\NIST_Waters.clean_SPIDER_11\\";
 
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 

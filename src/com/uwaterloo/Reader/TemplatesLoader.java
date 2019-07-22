@@ -13,6 +13,7 @@ import java.util.regex.Matcher;
 
 
 public class TemplatesLoader {
+
     public List<Template> loadTemplateFasta(String templateFastaFile) {
         List<Template> templateList = new ArrayList<>();
 

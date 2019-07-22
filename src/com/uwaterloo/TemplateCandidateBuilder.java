@@ -349,7 +349,7 @@ public class TemplateCandidateBuilder {
      * all of the vertices at previous position.
      * @param verticesList
      */
-    private void addConnection(List<List<Vertex>> verticesList) {
+    public void addConnection(List<List<Vertex>> verticesList) {
         int index = 0;
         while (index < (verticesList.size() - 1)) {
             List<Vertex> preVertices = verticesList.get(index);
@@ -836,7 +836,7 @@ public class TemplateCandidateBuilder {
             candidateTemplates.add(candidateTemplate1);
         } else {
             //For Polyclonal, each template might diverge into three.
-            boolean homo = false;
+            boolean homo = true;
 
             if (homo) {
                 //Apply homogeneous mutations to template to generate one candidate template

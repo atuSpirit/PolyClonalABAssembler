@@ -20,15 +20,17 @@ public class Assembler {
 
         dir = "/Users/hao/data/ab19001.polyclonal.templateSelected_SPIDER_37/";
 
-        //dir = "C:\\Hao\\result\\ab19001.polyclonal.05.05_SPIDER_13\\";
+        dir = "C:\\Hao\\result\\ab19001.polyclonal.05.05_SPIDER_19\\";
         //dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_37\\";
         //dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_19\\";
-        //dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_18\\";
+        dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_32\\";
 
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
-        //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_20\\";
+        dir = "C:\\Hao\\result\\Water_mAB.clean_SPIDER_14\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
+        dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_38\\";
+        dir = "C:\\Users\\h6lin.CS-GENERAL\\PeaksExports\\NIST_Waters.1_SPIDER_20\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -48,12 +50,7 @@ public class Assembler {
         dnList = dnReader.filterDnByConfScore(dnList, confScoreThresh, inConfidentAANumThresh);
         System.out.println("filtered denovo size: " + dnList.size());
 
-        String templateFasta = dir + "Nuno.2016.heavy.template.fasta";
-        //templateFasta = dir + "Waters_mAB.template_top4.fasta";
-        templateFasta = dir + "ab19001.5enzymes.template_top8.fasta";
-        templateFasta = dir + "candidate_template2.mergedFrag.fasta";
-        templateFasta = dir + "Nuno2016.HC_LC.template.top4.fasta";
-        templateFasta = dir + "proteins.fasta";
+        String templateFasta = dir + "proteins.fasta";
         TemplatesLoader loader = new TemplatesLoader();
         List<Template> templateList = loader.loadTemplateFasta(templateFasta);
 
@@ -80,7 +77,7 @@ public class Assembler {
         short kmerSize = 6;
         dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
-        double significantThreshold = 0.2;  //Increase from 0.1 to 0.2 for Nuno data which is less accurate
+        double significantThreshold = 0.1;  //Increase from 0.1 to 0.2 for Nuno data which is less accurate
 
         boolean useDenovo = false;
         if (!useDenovo) {
@@ -99,10 +96,10 @@ public class Assembler {
         contaminantFile = "/Users/hao/data/contaminants.fasta";
 
         contaminantFile = "C:\\hao\\database\\contaminants.fasta";
-        contaminantFile = "/Users/hao/data/contaminants.fasta";
+        //contaminantFile = "/Users/hao/data/contaminants.fasta";
         String candidateTemplateWithContaminant = "C:\\Hao\\database\\candidate_template_with_contaminant.fasta";
 
-        candidateTemplateWithContaminant = "/Users/hao/data/candidate_template_with_contaminant.fasta";
+        //candidateTemplateWithContaminant = "/Users/hao/data/candidate_template_with_contaminant.fasta";
         int min_template_length = 0;  //If a template length is shorter than the min_length, don't output it.
 
         System.out.println("Exporting candidate templates: ");
