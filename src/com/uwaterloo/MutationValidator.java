@@ -647,7 +647,7 @@ public class MutationValidator {
             //int pos = posWithMaxMutationNumList.get(0);
             Set<String> variationPosChecked = new HashSet<>();
             for (int pos : posWithMaxMutationNumList) {
-                System.out.println("pos: " + pos);
+                //System.out.println("pos: " + pos);
                 while (true) {
                     List<PSMAligned> psmAlignedList = getListOfPSMAlignedGivenPosAndMutatedNum(templateHooked, pos,
                             mutationNum);

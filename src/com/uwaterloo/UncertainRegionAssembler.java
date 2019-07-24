@@ -162,17 +162,17 @@ public class UncertainRegionAssembler {
             assembledContigs.add(toRightContigs.get(0));
         }
 
-/*
+//*
         System.out.println("dn to left");
         for (DenovoAligned dnAligned : dnAlignToLeftList) {
-            System.out.println(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
-                    " " + dnAligned.getDnScan());
+            System.out.print(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
+                    " " +  dnAligned.getScore() + " " + dnAligned.getDnScan());
             for (short score : scanDnMap.get(dnAligned.getDnScan()).getConfScores()) {
                 System.out.print(" " + score);
             }
             System.out.println();
         }
-*/
+/**/
 
         //Assemble the dnToLeft into contigs, keep only the one with highest score
         List<Contig> toLeftContigs = assembleDnToLeftAlign(dnAlignToLeftList, scanDnMap);
@@ -283,6 +283,10 @@ public class UncertainRegionAssembler {
     /* if the psm contain ionScore smaller than 33, there is no fragment for four AAs, it is a inconfident one.*/
     private boolean isConfidentPSM(PSMAligned psm) {
         int scoreThresh = 30;
+
+        if (psm.getIonScores() == null) {
+            return false;
+        }
         for (short ionScore : psm.getIonScores()) {
             if (ionScore < scoreThresh) {
                 return false;
@@ -592,12 +596,16 @@ public class UncertainRegionAssembler {
     private void generateCandidateTemplate(TemplateHooked templateHooked, List<Contig> assembledContigs) {
         System.out.println("Debug:" + templateHooked.getTemplateAccession());
 
-        List<Contig> mergedContigs = mergeContigs(assembledContigs);
-        Collections.sort(mergedContigs, Contig.cmpScore());
+        //TODO don't need merge.
+        //List<Contig> mergedContigs = mergeContigs(assembledContigs);
+        //Collections.sort(mergedContigs, Contig.cmpScore());
+
+        Collections.sort(assembledContigs, Contig.cmpScore());
 
         char[] AAs = templateHooked.getSeq().clone();
 
-        for (Contig contig : mergedContigs) {
+        //for (Contig contig : mergedContigs) {
+        for (Contig contig : assembledContigs) {
             int tStart = contig.gettStart() < 0 ? 0 : contig.gettStart();
             int tEnd = contig.gettEnd();
 
@@ -711,6 +719,9 @@ public class UncertainRegionAssembler {
                 assembledContigs.addAll(assembleOneRegion(regionToAssemble, scanDnMap));
             }
 
+            if (templateHooked.getTemplateAccession().equals("can6_ab|id_978025713439534183|id_978025713439534183_HQYQI_scoreIncrease_7371")) {
+                System.out.println("Debug");
+            }
             System.out.println("Assembled contigs");
             for (Contig assembledContig : assembledContigs) {
                 System.out.println(assembledContig.toString());
