@@ -32,7 +32,7 @@ public class Assembler {
         dir = "C:\\Hao\\result\\Water_mAB.clean_SPIDER_14\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_38\\";
-        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_46\\";
+        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_71\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -159,7 +159,8 @@ public class Assembler {
             for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
                 List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
                 String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
-                if (candidateTemplates == null) {
+
+                if (candidateTemplates == null || candidateTemplates.size() == 0) {
                     //If no candidate, means no change need to make to the template, export the template directly
                     System.out.println(">" + templateAccession);
                     System.out.println(new String(templateHookedList.get(templateId).getSeq()));

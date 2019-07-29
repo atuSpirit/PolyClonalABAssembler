@@ -828,7 +828,7 @@ public class TemplateCandidateBuilder {
 
         boolean polyClonal = true;
         //For Polyclonal, each template might diverge into three.
-        boolean homo = true;
+        boolean homo = false;
         boolean graphAssembly = true;
         boolean useTopScoreNotIntensity = false;    //true use score, false use intensity
 

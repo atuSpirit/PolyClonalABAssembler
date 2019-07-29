@@ -1,6 +1,8 @@
 package com.uwaterloo.Tools;
 
 import Utils.AAMass;
+import com.uwaterloo.Reader.TemplatesLoader;
+import com.uwaterloo.Template;
 
 import java.util.List;
 
@@ -11,9 +13,24 @@ public class IntactMassValidater {
         for (char AA : proteinSeq) {
             String AAstr = "";
             AAstr += AA;
+            if (!AAMass.AA_MASS_TABLE.containsKey(AAstr)) {
+                //System.out.println(AAstr);
+                continue;
+            }
             intactMass += AAMass.AA_MASS_TABLE.get(AAstr);
+
         }
         return intactMass;
+    }
+
+    public static void main(String[] args) {
+        String templateFasta = "C:\\hao\\database\\abysis.fasta";
+        TemplatesLoader loader = new TemplatesLoader();
+        List<Template> templateList = loader.loadTemplateFasta(templateFasta);
+        for (Template template : templateList) {
+            float intactMass = IntactMassValidater.computeIntactMass(template.getSeq());
+            System.out.println(template.getTemplateAccession() + "," + intactMass);
+        }
     }
 
 

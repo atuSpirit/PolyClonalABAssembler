@@ -24,7 +24,7 @@ public class CandidateTemplateValidater {
         CandidateTemplateValidater candidateTemplateValidater = new CandidateTemplateValidater();
 
         String dir = "C:\\hao\\result\\ab19001.polyclonal.05.05_SPIDER_16\\";
-        dir = "C:\\Hao\\result\\NIST_Waters.1_SPIDER_42\\";
+        dir = "C:\\Hao\\result\\NIST_Waters.1_SPIDER_68\\";
         String contaminantFile = "C:\\hao\\database\\contaminants.fasta";
         String candidateTemplateWithContaminant = "C:\\Hao\\database\\candidate_template_with_contaminant.fasta";
 
@@ -146,6 +146,12 @@ public class CandidateTemplateValidater {
      */
     private int validateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap,
                                      MutationsPattern templatePattern) {
+        /* In the case the template is not diverged, there will be no templatePattern. We still need to
+           put the sequence in, because this is the correct sequence, which don't need update any more.
+         */
+        if (templatePattern == null) {
+            return 1;
+        }
         List<Integer> posArray = templatePattern.getPosList();
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder();
