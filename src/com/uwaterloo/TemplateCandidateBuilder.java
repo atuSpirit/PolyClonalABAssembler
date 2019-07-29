@@ -5,6 +5,10 @@ import java.util.*;
 public class TemplateCandidateBuilder {
     List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsList;
 
+    public TemplateCandidateBuilder() {
+
+    }
+
     public TemplateCandidateBuilder(List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsList) {
         this.mutationsList = mutationsList;
     }
@@ -86,13 +90,14 @@ public class TemplateCandidateBuilder {
             List<Integer> posList = mutationsPattern.getPosList();
             String pattern = mutationsPattern.getAAs();
             //DEBUG
-            System.out.println("Debug: " + pattern + " " + posList.toString() + " " + mutationsPattern.getFreq());
+            //System.out.println("Debug: " + pattern + " " + posList.toString() + " " + mutationsPattern.getFreq());
 
             for (int i = 0; i < posList.size(); i++) {
                 candidateTemplate[posList.get(i)] = pattern.charAt(i);
             }
         }
-        System.out.println(new String(candidateTemplate));
+
+        //System.out.println(new String(candidateTemplate));
         return candidateTemplate;
     }
 
@@ -112,14 +117,15 @@ public class TemplateCandidateBuilder {
      * For each pos in PosArray, choose the significant AAs and build a vertice for each of them.
      * @return
      */
-    private TreeMap<Integer, List<Vertex>> buildVertice(List<Integer> posArray, TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
-        TreeMap<Integer, List<Vertex>> vertexesList = new TreeMap<>();
-        for (int pos : posArray) {
+    private TreeMap<Integer, Map<Character, Vertex>> buildVertice(TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
+        TreeMap<Integer, Map<Character, Vertex>> vertexesList = new TreeMap<>();
+        for (int pos : significantAAsPerPos.keySet()) {
             List<MutationsPattern> mutations = significantAAsPerPos.get(pos);
-            List<Vertex> vertices = new ArrayList<>();
+            Map<Character, Vertex> vertices = new HashMap<>();
             for (MutationsPattern mutation : mutations) {
-                Vertex v = new Vertex(pos, mutation);
-                vertices.add(v);
+                char AA = mutation.getAAs().charAt(0);
+                Vertex v = new Vertex(pos, AA);
+                vertices.put(AA, v);
             }
 
             vertexesList.put(pos, vertices);
@@ -128,57 +134,325 @@ public class TemplateCandidateBuilder {
     }
 
     /**
-     * Build edges between adjacent two vertexes.
+     * Add the template pattern in vertices position to extendedMutationPatterns.
+     * To reduce the combination number of candidate templates.
+     * If one of templateAA does not appears in vertices, split the templatePattern into
+     * multiple one excluding those position whose AA is not significant.
+     * @param extendedMutations
      * @param templateHooked
-     * @param scanPSMMap
-     * @param posArray
-     * @param vertexes
-     * @return a list of edgeList.  The list has the same length with posArray. list[i] contains all the edges starting
-     * from pos[i]
+     * @param verticesMap
      */
-    private List<Set<Edge>> buildEdges(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap,
-                                        List<Integer> posArray, List<Map<Character, Vertex>> vertexes) {
-        if (posArray.size() < 2) {
-            return null;
-        }
+    private void addTemplatePattern(TreeMap<Integer, List<MutationsPattern>> extendedMutations,
+                                    TemplateHooked templateHooked,
+                                    TreeMap<Integer, Map<Character, Vertex>> verticesMap) {
+        List<Integer> posList = new ArrayList<>();
+        String AAs = "";
 
-        List<Set<Edge>> edgesList = new ArrayList<>();
-        for (int i = 0; i < (posArray.size() - 1); i++) {
-            Set<Edge> edges = new HashSet<>();
-            edgesList.add(edges);
-        }
+        for (int pos : verticesMap.keySet()) {
+            char templateAA = templateHooked.getSeq()[pos];
 
-        int index = 0;
-        while (index < (posArray.size() - 1)) {
-            int currPos = posArray.get(index);
-            int nextPos = posArray.get(index + 1);
-
-            List<String> scans = templateHooked.getMappedScanList().get(currPos);
-            for (String scan : scans) {
-                PSMAligned psmAligned = scanPSMMap.get(scan);
-                int pos2 = nextPos - psmAligned.getStart();
-                if (pos2 > psmAligned.getAAs().length) {
+            if (verticesMap.get(pos).containsKey(templateAA)) {
+                posList.add(pos);
+                AAs += templateAA;
+            } else {
+                MutationsPattern templatePattern = new MutationsPattern(posList, AAs, 1, 1);
+                if (posList.size() < 2) {
                     continue;
                 }
-                int pos1 = currPos - psmAligned.getStart();
-                char AA1 = psmAligned.getAAs()[pos1];
-                Vertex vertex1 = vertexes.get(currPos).get(AA1);
-                if (vertex1 == null) {
-                    System.err.println("Error: null vertex");
+
+                if (extendedMutations.containsKey(posList.get(0))) {
+                    extendedMutations.get(posList.get(0)).add(templatePattern);
+                } else {
+                    List<MutationsPattern> list = new ArrayList<>();
+                    list.add(templatePattern);
+                    extendedMutations.put(posList.get(0), list);
                 }
 
-                char AA2 = psmAligned.getAAs()[pos2];
-                Vertex vertex2 = vertexes.get(nextPos).get(AA2);
-                if (vertex2 == null) {
-                    System.err.println("Error: null vertex");
+                posList = new ArrayList<>();
+                AAs = "";
+            }
+        }
+        if (!AAs.equals("")) {
+            MutationsPattern templatePattern = new MutationsPattern(posList, AAs, 1, 1);
+            int pos = posList.get(0);
+            if (extendedMutations.containsKey(pos)) {
+                extendedMutations.get(pos).add(templatePattern);
+            } else {
+                List<MutationsPattern> templatePatternList = new ArrayList<>();
+                templatePatternList.add(templatePattern);
+                extendedMutations.put(posList.get(0), templatePatternList);
+            }
+        }
+    }
+
+
+
+    /**
+     * Judge whether an extentedMutation contains only significant AA in verticesMap or not.
+     * If the mutation contains position not in verticeMap, if the AA is same as that
+     * on templateHooked. If the mutation AA does not appear in verticeMap, it is a insignificant
+     * extendedMutation.
+     * @param extendedMutation
+     * @param verticesMap
+     * @param templateHooked
+     */
+    private boolean isSignificantPattern(MutationsPattern extendedMutation,
+                                           TreeMap<Integer, Map<Character, Vertex>> verticesMap,
+                                            TemplateHooked templateHooked) {
+
+        List<Integer> posList = extendedMutation.getPosList();
+        if (posList.size() == 1) {
+            //If pattern contain one position, there will be no edge
+            return false;
+        }
+        //Check whether all AAs in the extendedMutation are all significantAA. If not, the mutationPatter will not be used.
+        String AAString = extendedMutation.getAAs();
+
+        boolean isSignificantAA = true;
+        boolean containSignificantPos = false;
+
+        for (int i = 0; i < posList.size(); i++) {
+            int pos = posList.get(i);
+            char mutationAA = AAString.charAt(i);
+
+            //If pos is not a significant pos
+            if (!verticesMap.containsKey(pos)) {
+                //if the AA in extendedMutation equals that one on template,
+                //keep going, otherwise, discard this mutation pattern
+                if (mutationAA == templateHooked.getSeq()[pos]) {
+                    continue;
+                } else {
+                    isSignificantAA = false;
+                    break;
                 }
-                Edge edge = new Edge(vertex1, vertex2);
-                edgesList.get(index).add(edge);
             }
 
-            index += 1;
+            containSignificantPos = true;
+            Map<Character, Vertex> vertexMap = verticesMap.get(pos);
+            //If the currAA does not in vertex, it is not significant
+            if (!vertexMap.containsKey(mutationAA)) {
+                isSignificantAA = false;
+                break;
+            }
         }
-        return edgesList;
+        return isSignificantAA && containSignificantPos;
+    }
+
+    /**
+     * Add an edge to vertexEdgeList.  If the edge exists, only update the weight.
+     * @param edge
+     * @param edgeWeight
+     * @param vertexEdgeList
+     */
+    private void addEdgeToVertexEdgeList(Edge edge, int edgeWeight, List<Edge> vertexEdgeList) {
+        boolean edgeExist = false;
+
+        for (int i = 0; i < vertexEdgeList.size(); i++) {
+            Edge existEdge = vertexEdgeList.get(i);
+            if (edge.equals(existEdge)) {
+                edgeExist = true;
+                vertexEdgeList.get(i).setWeight(existEdge.getWeight() + edgeWeight);
+            }
+        }
+        if (!edgeExist) {
+            edge.setWeight(edgeWeight);
+            vertexEdgeList.add(edge);
+        }
+    }
+
+    /**
+     * Build edges between adjacent two vertices according to significant extendedMutationPattern.
+     * @param extendedMutationsMap The extendedMutationPatterns
+     * @param verticesMap a sorted map <position, verticeMap at this position>, verticeMap is
+     *                    <AA, vertex> map.
+     * @param templateHooked
+     * @return The verticesMap is modified. Each vertex is attached with inEdges and outEdges
+     *          with proper accumulated weight
+     */
+    public List<List<Vertex>> buildEdges(TreeMap<Integer, List<MutationsPattern>> extendedMutationsMap,
+                                   TreeMap<Integer, Map<Character, Vertex>> verticesMap,
+                                    TemplateHooked templateHooked) {
+        for (int startPos : extendedMutationsMap.keySet()) {
+            List<MutationsPattern> extendedMutations = extendedMutationsMap.get(startPos);
+            for (MutationsPattern extendedMutation : extendedMutations) {
+                //Skip those extendMutationPatterns containing insignificant AA
+                if (!isSignificantPattern(extendedMutation, verticesMap, templateHooked)) continue;
+
+                System.out.println("Debug " + extendedMutation.toString());
+                List<Integer> posList = extendedMutation.getPosList();
+                String AAString = extendedMutation.getAAs();
+
+                int index = 0;
+                int currPos = posList.get(index);
+                //find the currPos which is significant
+                while (!verticesMap.containsKey(currPos)) {
+                    index += 1;
+                    currPos = posList.get(index);
+                }
+                char currAA = AAString.charAt(index);
+
+                while (index < (posList.size() - 1)) {
+                    int nextPos = posList.get(index + 1);
+                    //find next significant pos
+                    if (!verticesMap.containsKey(nextPos)) {
+                        index++;
+                        continue;
+                    }
+                    char nextAA = AAString.charAt(index + 1);
+
+                    Vertex vertex1 = verticesMap.get(currPos).get(currAA);
+                    Vertex vertex2 = verticesMap.get(nextPos).get(nextAA);
+                    Edge edge = new Edge(vertex1, vertex2);
+                    Edge edgeCopy = new Edge(vertex1, vertex2);
+                    addEdgeToVertexEdgeList(edge, extendedMutation.getScore(), vertex1.getOutEdges());
+                    addEdgeToVertexEdgeList(edgeCopy, extendedMutation.getScore(), vertex2.getInEdges());
+
+                    currPos = nextPos;
+                    currAA = nextAA;
+                    index++;
+                }
+            }
+        }
+
+        //Store verticesMap to a list of vertexlist at each position.
+        List<List<Vertex>> verticesList = new ArrayList<>();
+        for (int pos : verticesMap.keySet()) {
+            List<Vertex> vertices = new ArrayList<>();
+            Map<Character, Vertex> vertexMap = verticesMap.get(pos);
+            for (Vertex vertex : vertexMap.values()) {
+                vertices.add(vertex);
+            }
+            verticesList.add(vertices);
+        }
+        return verticesList;
+    }
+
+    public void printEdges(TreeMap<Integer, Map<Character, Vertex>> verticesMap) {
+        for (int pos : verticesMap.keySet()) {
+            System.out.println("pos " + pos + ":");
+            Map<Character, Vertex> vertices = verticesMap.get(pos);
+            for (Vertex vertex : vertices.values()) {
+                /*
+                System.out.println("Inner edges");
+                for (Edge inEdge : vertex.getInEdges()) {
+                    System.out.println(inEdge.toString());
+                }
+                */
+                System.out.println("Outer edges");
+                for (Edge outEdge : vertex.getOutEdges()) {
+                    System.out.println(outEdge.toString());
+                }
+
+            }
+
+        }
+    }
+
+    /**
+     * For those vertices has no incoming edge, add edge between them and
+     * all of the vertices at previous position.
+     * @param verticesList
+     */
+    public void addConnection(List<List<Vertex>> verticesList) {
+        int index = 0;
+        while (index < (verticesList.size() - 1)) {
+            List<Vertex> preVertices = verticesList.get(index);
+            List<Vertex> nextVertices = verticesList.get(index + 1);
+            Set<Edge> edgesToBeAdded = new HashSet<>();
+            for (Vertex preVertex : preVertices) {
+                if (preVertex.getOutEdges().size() == 0) {
+                    for (Vertex nextVertex : nextVertices) {
+                        Edge edge = new Edge(preVertex, nextVertex);
+                        addEdgeToVertexEdgeList(edge, 0, edge.getStartVertice().getOutEdges());
+                        addEdgeToVertexEdgeList(edge, 0, edge.getEndVertice().getInEdges());
+                        //edgesToBeAdded.add(edge);
+                    }
+                }
+            }
+            
+            for (Vertex nextVertex : nextVertices) {
+                if (nextVertex.getInEdges().size() == 0) {
+                    for (Vertex preVertex : preVertices) {
+                        Edge edge = new Edge(preVertex, nextVertex);
+                        addEdgeToVertexEdgeList(edge, 0, edge.getStartVertice().getOutEdges());
+                        addEdgeToVertexEdgeList(edge, 0, edge.getEndVertice().getInEdges());
+                        //edgesToBeAdded.add(edge);
+                    }
+                }
+            }
+
+            /*
+            for (Edge edge : edgesToBeAdded) {
+                addEdgeToVertexEdgeList(edge, 0, edge.getStartVertice().getOutEdges());
+                addEdgeToVertexEdgeList(edge, 0, edge.getEndVertice().getInEdges());
+            }
+            */
+
+            index++;
+        }
+    }
+
+    public List<MutationsPattern> generatePathCombination(List<List<Vertex>> verticesList) {
+        List<MutationsPattern> pathCombinations = new ArrayList<>();
+
+        //Put all edges from first position
+        int index = 0;
+        for (Vertex vertex : verticesList.get(0)) {
+            for (Edge edge : vertex.getOutEdges()) {
+                List<Integer> posList = new ArrayList<>();
+                posList.add(edge.getStartVertice().getPos());
+                posList.add(edge.getEndVertice().getPos());
+                MutationsPattern prefixPattern = new MutationsPattern(posList,
+                        String.valueOf(edge.getStartVertice().getAA()) + String.valueOf(edge.getEndVertice().getAA()),
+                                                0, edge.getWeight());
+                pathCombinations.add(prefixPattern);
+            }
+        }
+        //Append AA from each position to pathCombination
+        index = 1;
+        while (index < (verticesList.size() - 1)) {
+            List<MutationsPattern> newAddedPrefixPattern = new ArrayList<>();
+            for (Vertex vertex1 : verticesList.get(index)) {
+                for (MutationsPattern prefixPattern : pathCombinations) {
+                    //Find the prefix whose suffix AA is same as vertex1.AA to extend
+                    if (prefixPattern.getAAs().endsWith(String.valueOf(vertex1.getAA()))) {
+                        int edgeIndex = 0;
+                        //If vertex1.getOutEdges contain more than one edge, need to clone new prefixPattern
+                        while (edgeIndex < (vertex1.getOutEdges().size() - 1)) {
+                            Edge edge = vertex1.getOutEdges().get(edgeIndex);
+                            Vertex vertex2 = edge.getEndVertice();
+                            List<Integer> newPosList = new ArrayList<>();
+                            for (int pos : prefixPattern.getPosList()) {
+                                newPosList.add(pos);
+                            }
+                            newPosList.add(vertex2.getPos());
+                            MutationsPattern prefixCopy = new MutationsPattern(newPosList,
+                                    prefixPattern.getAAs() + String.valueOf(vertex2.getAA()),
+                                    prefixPattern.getFreq(),
+                                    prefixPattern.getScore() + edge.getWeight());
+                            newAddedPrefixPattern.add(prefixCopy);
+                            edgeIndex++;
+                        }
+
+                        Edge edge = vertex1.getOutEdges().get(edgeIndex);
+                        Vertex vertex2 = edge.getEndVertice();
+                        prefixPattern.getPosList().add(vertex2.getPos());
+                        prefixPattern.setAAs(prefixPattern.getAAs() + vertex2.getAA());
+                        prefixPattern.setScore(prefixPattern.getScore() + edge.getWeight());
+                    }
+                }
+            }
+            pathCombinations.addAll(newAddedPrefixPattern);
+            /*
+            System.out.println("Prefix Path at index: " +index);
+            for (MutationsPattern path : pathCombinations) {
+                System.out.println("Debug: " + path.toString());
+            }
+            */
+
+            index++;
+        }
+        return pathCombinations;
     }
 
     /**
@@ -241,113 +515,15 @@ public class TemplateCandidateBuilder {
         return mergedMutationPatterns;
     }
 
-    /**
-     * Will not used any more.
-     *  According to spectra in templateHooked and posArray, extend the patterns to include adjacent positions in posArray.
-     *  For example,
-     *  18
-     *  DG at [18, 27] freq: 20 score: 3433 will become [18, 19, 27]
-     *  19
-     * VGS at [19, 27, 34] freq: 10 score: 2391 -> DVGS at [18, 19, 27, 34]
-     */
-    private TreeMap<Integer, List<MutationsPattern>> extendPatterns(TreeMap<Integer, List<MutationsPattern>> processedMutations,
-                                                                    List<Integer> posArray, TemplateHooked templateHooked,
-                                                                    HashMap<String, PSMAligned> scanPSMMap) {
-        Map<MutationsPattern, MutationsPattern> extendedPatterns = new HashMap<>();
-        for (Integer pos : posArray) {
-            //Extract all scans covering this position
-            List<String> scanList = templateHooked.getMappedScanList().get(pos);
-
-            //Extract all mutation patterns starting from this position
-            List<MutationsPattern> mutationsPatterns = processedMutations.get(pos);
-            /* If the mutation Patterns is null for pos, the position contains mutation, however,
-               no mutation patterns starting from this position.  We should extract a single length AA pattern of this position
-               to form a new mutation pattern from the scans covering this position */
-            if (mutationsPatterns == null) {
-                List<Integer> AAPosList = new ArrayList<>();
-                AAPosList.add(pos);
-                for (String scan : scanList) {
-                    PSMAligned psmAligned = scanPSMMap.get(scan);
-                    MutationsPattern extendedPattern = extractAAs(AAPosList, psmAligned);
-
-                    if (extendedPatterns.containsKey(extendedPattern)) {
-                        //Update the freq and score
-                        extendedPatterns.get(extendedPattern).setFreq(extendedPatterns.get(extendedPattern).getFreq() + 1);
-                        extendedPatterns.get(extendedPattern).setScore(extendedPattern.getScore() +
-                                extendedPatterns.get(extendedPattern).getScore());
-                        //The extendedPattern only contain one intensity in its intensitySet
-                        long intensity = extendedPattern.getIntensitySet().iterator().next();
-                        //If the intensity has not appeared in extendedPatterns, add it to the intensity set
-                        if (!extendedPatterns.get(extendedPattern).getIntensitySet().contains(intensity)) {
-                            extendedPatterns.get(extendedPattern).getIntensitySet().add(intensity);
-                        }
-                    } else {
-                        extendedPatterns.put(extendedPattern, extendedPattern);
-                    }
-                }
-                continue;
-            }
-
-            //For each mutation pattern, extend it based on the scans covering this position
-            for (MutationsPattern pattern : mutationsPatterns) {
-                List<Integer> subPosList = pattern.getPosList();
-
-                for (String scan : scanList) {
-                    PSMAligned psmAligned = scanPSMMap.get(scan);
-                    int start = psmAligned.getStart();
-                    int end = psmAligned.getEnd();
-                    if (end < subPosList.get(subPosList.size() - 1)) {
-                        continue;
-                    }
-                    //Get the pos List of posArray in the range of this peptide
-                    List<Integer> posList = getPosListInRange(posArray, start, end);
-                    String AAs = extractAAs(subPosList, psmAligned).getAAs();
-                    if (AAs.equals(pattern.getAAs())) {
-                        MutationsPattern extendedPattern =  extractAAs(posList, psmAligned);
-                        if (extendedPatterns.containsKey(extendedPattern)) {
-                            //Update the freq and score
-                            extendedPatterns.get(extendedPattern).setFreq(extendedPatterns.get(extendedPattern).getFreq() + 1);
-                            extendedPatterns.get(extendedPattern).setScore(extendedPattern.getScore() +
-                                        extendedPatterns.get(extendedPattern).getScore());
-                            //The extendedPattern only contain one intensity in its intensitySet
-                            long intensity = extendedPattern.getIntensitySet().iterator().next();
-                            //If the intensity has not appeared in extendedPatterns, add it to the intensity set
-                            if (!extendedPatterns.get(extendedPattern).getIntensitySet().contains(intensity)) {
-                                extendedPatterns.get(extendedPattern).getIntensitySet().add(intensity);
-                            }
-                        } else {
-                            extendedPatterns.put(extendedPattern, extendedPattern);
-                        }
-                    }
-                }
-
-            }
-        }
-        //Storing the extendedPatterns according to their first position
-        TreeMap<Integer, List<MutationsPattern>> extendedPatternsMap = new TreeMap<>();
-        for (MutationsPattern extendedPattern : extendedPatterns.values()) {
-            int pos = extendedPattern.getPosList().get(0);
-            if (extendedPatternsMap.containsKey(pos)) {
-                extendedPatternsMap.get(pos).add(extendedPattern);
-            } else {
-                List<MutationsPattern> extendedPatternsList = new ArrayList<>();
-                extendedPatternsList.add(extendedPattern);
-                extendedPatternsMap.put(pos, extendedPatternsList);
-            }
-        }
-        return extendedPatternsMap;
-    }
-
 
     /**
-     * Rewrite it to not to scan based on mutationPatterns.
      * Examine each position in posArray.  For each position, extract all scans covering the position.
      * For each unexamined scan, extract the pattern in posArray to extendPatterns.
      * Since all scans covering the position are those scans containing confident score. Scans without
      * significant mutation has been removed in MutationValidator. Since each mutation pattern
      * is extracted from a scan based on posArray, it cannot be extended any more.
      */
-    private TreeMap<Integer, List<MutationsPattern>> extendPatterns(List<Integer> posArray, TemplateHooked templateHooked,
+    public TreeMap<Integer, List<MutationsPattern>> extendPatterns(List<Integer> posArray, TemplateHooked templateHooked,
                                                                     HashMap<String, PSMAligned> scanPSMMap) {
         Map<MutationsPattern, MutationsPattern> extendedPatterns = new HashMap<>();
         Set<String> checkScanSet = new HashSet<>();
@@ -402,7 +578,6 @@ public class TemplateCandidateBuilder {
     }
 
     /**
-     *
      * Based on the extended mutation patterns, extract frequency and scores of AAs in each position.
      * The frequency is the sum of the AA appears in extended patterns of this position.
      * The score is the sum of the score of the extended patterns containing AA divided by the length of the pattern.
@@ -436,6 +611,7 @@ public class TemplateCandidateBuilder {
                             if (AAPattern.getAAs().equals(str)) {
                                 AAPattern.setFreq(AAPattern.getFreq() + pattern.getFreq());
                                 AAPattern.setScore(AAPattern.getScore() + pattern.getScore() / pattern.getAAs().length());
+                                AAPattern.getIntensitySet().addAll(pattern.getIntensitySet());
                                 AAexist = true;
                             }
                         }
@@ -507,7 +683,7 @@ public class TemplateCandidateBuilder {
 
     /* Filter the AA under ratio_thresh. All pattern in sigAAsPerPos are a single AA */
     private TreeMap<Integer, List<MutationsPattern>> getSigVariationsPerPos(TreeMap<Integer, List<MutationsPattern>> AAsPerPos,
-                                                                            char[] templateAAs, double ratio_thresh) {
+                                                                            char[] templateAAs, double ratio_thresh, int minFreq) {
         TreeMap<Integer, List<MutationsPattern>> sigAAsPerPos = new TreeMap<>();
         for (int pos : AAsPerPos.keySet()) {
             List<MutationsPattern> patterns = AAsPerPos.get(pos);
@@ -518,10 +694,14 @@ public class TemplateCandidateBuilder {
             }
 
             for (MutationsPattern pattern : patterns) {
-                if ((pattern.getScore() / scoreSum) >= ratio_thresh) {
+                if (((pattern.getScore() / scoreSum) >= ratio_thresh) && (pattern.getFreq() >= minFreq)) {
                     sigPatterns.add(pattern);
                 }
             }
+            if ((sigPatterns.size() == 0)) {
+                continue;
+            }
+            //If only the mutation is same as template AA
             if ((sigPatterns.size() == 1) && (sigPatterns.get(0).getAAs().charAt(0) == templateAAs[pos])) {
                 continue;
             }
@@ -590,7 +770,10 @@ public class TemplateCandidateBuilder {
         return templatePattern;
     }
 
-    public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap, double significantThreshold) {
+
+
+    public List<char[]> buildCandidateTemplate(TemplateHooked templateHooked, HashMap<String, PSMAligned> scanPSMMap,
+                                               double significantThreshold, int minFreq) {
         System.out.println(templateHooked.getTemplateAccession());
         List<Integer> posArray = getPosSet();
         System.out.println(posArray.toString());
@@ -614,9 +797,10 @@ public class TemplateCandidateBuilder {
 
         System.out.println("Filter significant AA per pos...");
         TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos = getSigVariationsPerPos(AAsPerPos,
-                                                                    templateHooked.getSeq(), significantThreshold);
+                                                                    templateHooked.getSeq(), significantThreshold, minFreq);
 
         printMutationsAlongPos(significantAAsPerPos);
+
 
         /* Sum up the intensity for each variation of each position. If an intensity appears multiple times,
             they might be from the same feature.  Then it should be counted only once.
@@ -624,34 +808,6 @@ public class TemplateCandidateBuilder {
         sumIntensitySet(significantAAsPerPos);
  //       printIntensitySet(significantAAsPerPos);
 
-        /*
-        List<MutationsPattern> filteredExtendedMutations = filterSignificantMutations(extendedMutations,
-                                                                                significantAAsPerPos);
-
-        TreeMap<Integer, Set<Integer>> posMutationsMap = buildPosAssembledMutationsMap(filteredExtendedMutations);
-        */
-        /* Do not assemble mutation patterns */
-        /*
-        System.out.println("Assembling mutations patterns...");
-        //List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, extendedMutations);
-       List<MutationsPattern> assembledMutationContigs = assembleMutationPatterns(posArray, templateHooked,
-               extendedMutations, significantAAsPerPos);
-*/
-       /* List<MutationsPattern> assembledMutationContigs = new ArrayList<>();
-        for (List<MutationsPattern> patternList : mutationSorted.values()) {
-            //for (List<MutationsPattern> patternList : processedMutations.values()) {  Wrong one
-            assembledMutationContigs.addAll(patternList);
-        }
-        */
-/*
-        int confThresh = 1; //Currently use 3 as minimal frequency of the pattern to be considered.
-        List<MutationsPattern> filteredMutationContigs = filterMutationContigs(assembledMutationContigs, confThresh);
-        TreeMap<Integer, Set<Integer>> posMutationsMap = buildPosAssembledMutationsMap(filteredMutationContigs);
-*/
-        /* Get the top freq to form template 1, then second top freq to form template 2.  It might contain problem that
-            the second one is a mosiac one. In fact, the second one should have part of first one.  Need more judgement
-            whether the frequency in one template are similar.
-         */
 
         /* Get the AAs on template of positions in posArray. If significantAAsPerPos has only one variation, change
             the AA of this position to it.
@@ -663,8 +819,18 @@ public class TemplateCandidateBuilder {
 
         System.out.println("Generating candidate templates...");
         List<char[]> candidateTemplates = new ArrayList<>();
+        //If there is no significant mutations, return the original templateHooked.
+        if (significantAAsPerPos.size() == 0) {
+            candidateTemplates.add(templateHooked.getSeq());
+            return candidateTemplates;
+        }
+
+
         boolean polyClonal = true;
-        boolean useTopScoreNotIntensity = true;    //true use score, false use intensity
+        //For Polyclonal, each template might diverge into three.
+        boolean homo = false;
+        boolean graphAssembly = true;
+        boolean useTopScoreNotIntensity = false;    //true use score, false use intensity
 
         if (!polyClonal) {
             //For mAB, no need second candidate, pick the candidate with highest score
@@ -680,20 +846,25 @@ public class TemplateCandidateBuilder {
 
             candidateTemplates.add(candidateTemplate1);
         } else {
-            //For Polyclonal, each template might diverge into three.
-            boolean homo = false;
+
 
             if (homo) {
                 //Apply homogeneous mutations to template to generate one candidate template
                 List<MutationsPattern> homogeneousMutations = getHomogeneousMutations(significantAAsPerPos, templatePattern.getAAs());
+                //Debug
+                System.out.println("homogenous mutations:");
+                for (MutationsPattern pattern : homogeneousMutations) {
+                    System.out.println(pattern.toString());
+                }
                 char[] homoCandidateTemplate = getCandidateTemplate(templateHooked, homogeneousMutations);
                 candidateTemplates.add(homoCandidateTemplate);
-            } else {
+            } else if (!graphAssembly) {
                 //Add the template with homogeneous position altered as one of the template
                 List<MutationsPattern> patternList = new ArrayList<>();
                 patternList.add(templatePattern);
                 char[] templateCandidate = getCandidateTemplate(templateHooked, patternList);
-                candidateTemplates.add(templateCandidate);
+                //TODO: not to include the template one when using intensity
+                //candidateTemplates.add(templateCandidate);
 
                 char[] candidateTemplate1 = templateCandidate.clone();
                 char[] candidateTemplate2 = templateCandidate.clone();
@@ -714,7 +885,37 @@ public class TemplateCandidateBuilder {
                 if (!java.util.Arrays.equals(templateCandidate, candidateTemplate2)) {
                     candidateTemplates.add(candidateTemplate2);
                 }
+            } else {
+                /* assemble according to graph */
+
+                System.out.println("Building vertices...");
+                TreeMap<Integer, Map<Character, Vertex>> verticesMap = buildVertice(significantAAsPerPos);
+
+                //Add the template pattern in extended pattern to reduce the complexity
+                addTemplatePattern(extendedMutations, templateHooked, verticesMap);
+
+                System.out.println("Building Edges...");
+                List<List<Vertex>> verticesList = buildEdges(extendedMutations, verticesMap, templateHooked);
+                addConnection(verticesList);
+                printEdges(verticesMap);
+                List<MutationsPattern> pathCombination = generatePathCombination(verticesList);
+
+                Collections.sort(pathCombination, MutationsPattern.cmpReverseScore());
+                System.out.println(templateHooked.getTemplateAccession());
+                System.out.println("candidate number: " + pathCombination.size());
+                for (MutationsPattern path : pathCombination) {
+                    //System.out.println(path.toString());
+                    List<MutationsPattern> pathList = new ArrayList<>();
+                    pathList.add(path);
+                    char[] candidateTemplate = getCandidateTemplate(templateHooked, pathList);
+                    String infoString = ">" + path.toString() +">";
+                    char[] candidateTemplateWithInfo = (infoString + new String(candidateTemplate)).toCharArray();
+                    //candidateTemplates.add(candidateTemplate);
+                    candidateTemplates.add(candidateTemplateWithInfo);
+                }
+
             }
+
         }
 
 /*
@@ -725,11 +926,10 @@ public class TemplateCandidateBuilder {
         char[] candidateTemplate2 = getCandidateTemplate(templateHooked, topMutationContigList2);
         */
 
-
-
         return candidateTemplates;
 
     }
+
 
     private void sumIntensitySet(TreeMap<Integer, List<MutationsPattern>> significantAAsPerPos) {
         for (int pos : significantAAsPerPos.keySet()) {

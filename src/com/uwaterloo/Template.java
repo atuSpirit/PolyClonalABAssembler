@@ -27,6 +27,10 @@ public class Template {
         return templateAccession;
     }
 
+    public void setTemplateAccession(String templateAccession) {
+        this.templateAccession = templateAccession;
+    }
+
     public char[] getSeq() {
         return seq;
     }

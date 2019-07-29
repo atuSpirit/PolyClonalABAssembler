@@ -7,12 +7,14 @@ public class Contig {
     int tStart; //The start position on the template for contig extend to right
     int tEnd;   //The start position on the template for contig extend to left
     char[] AAs;
+    int[] confs;
     int score;
 
-    public Contig(int tStart, int tEnd, char[] AAs, int score) {
+    public Contig(int tStart, int tEnd, char[] AAs, int[] confs, int score) {
         this.tStart = tStart;
         this.tEnd = tEnd;
         this.AAs = AAs;
+        this.confs = confs;
         this.score = score;
     }
 
@@ -27,6 +29,8 @@ public class Contig {
     public char[] getAAs() {
         return AAs;
     }
+
+    public int[] getConfs() { return confs;}
 
     public int getScore() {
         return score;
@@ -43,6 +47,8 @@ public class Contig {
     public void setAAs(char[] AAs) {
         this.AAs = AAs;
     }
+
+    public void setConfs(int[] confs) { this.confs = confs;}
 
     public void setScore(int score) {
         this.score = score;

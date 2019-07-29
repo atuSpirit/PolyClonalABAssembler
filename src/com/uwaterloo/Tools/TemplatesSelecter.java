@@ -25,6 +25,7 @@ public class TemplatesSelecter {
         heavyChainTemplates = new ArrayList<>();
     }
 
+
     public static List<TemplateHooked> hookTemplates(String dir) {
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
@@ -236,13 +237,26 @@ public class TemplatesSelecter {
             e.printStackTrace();
         }
     }
+
+
     public static void main(String[] args) {
-        String dir = "D:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_49\\";
+
+        String dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_49\\";
+        dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_12\\";
+        dir = "C:\\Hao\\result\\ab19001.1_SPIDER_32\\";
+        dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_12\\";
+        dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_22\\";
+        dir = "C:\\hao\\result\\NIST_Waters.clean_SPIDER_11\\";
+        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_65\\";
+
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
         int topK = 4;
         int scoreThresh = 100;
-        float descreaseRatio = 1.0f;
+
+        //If selecting from all antibody database, set it less than 1. If choose from template candidate, set it to 1
+        float descreaseRatio = 0.1f;
+
         TemplatesSelecter templatesSelecter = new TemplatesSelecter(topK);
 
         List<TemplateHooked> templateHookedList = hookTemplates(dir);
@@ -264,8 +278,6 @@ public class TemplatesSelecter {
                                         dir, topK, scoreThresh, descreaseRatio);
         String lcFastaFile = dir + "light.top" + topK + ".fasta";
         templatesSelecter.exportFasta(lcFastaFile, topKLightTemplates);
-
-
 
 
     }

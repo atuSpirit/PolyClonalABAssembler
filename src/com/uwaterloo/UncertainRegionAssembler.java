@@ -137,7 +137,7 @@ public class UncertainRegionAssembler {
 
         List<Contig> assembledContigs = new ArrayList<>();
 
-
+/*
         System.out.println("dn to right");
         for (DenovoAligned dnAligned : dnAlignToRightList) {
             System.out.print(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
@@ -147,10 +147,11 @@ public class UncertainRegionAssembler {
             }
             System.out.println();
         }
-
+*/
 
         //Assemble the dnToRight into contigs, keep only the one with highest score
         List<Contig> toRightContigs = assembleDnToRightAlign(dnAlignToRightList, scanDnMap);
+        List<Contig> topToRightContigs = null;
         if (toRightContigs != null) {
             System.out.println("Contigs to right");
             /*
@@ -158,24 +159,32 @@ public class UncertainRegionAssembler {
                 System.out.println(contig.toString());
             }*/
             //Print only the contig with best score
-            System.out.println(toRightContigs.get(0).toString());
-            assembledContigs.add(toRightContigs.get(0));
+            //System.out.println(toRightContigs.get(0).toString());
+            //assembledContigs.add(toRightContigs.get(0));
+
+            //Pick the contig with best score for non overlap regions.
+            topToRightContigs = pickTopContigs(toRightContigs);
+            for (Contig topContig : topToRightContigs) {
+                System.out.println(topContig.toString());
+                assembledContigs.add(topContig);
+            }
         }
 
 /*
         System.out.println("dn to left");
         for (DenovoAligned dnAligned : dnAlignToLeftList) {
-            System.out.println(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
-                    " " + dnAligned.getDnScan());
+            System.out.print(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
+                    " " +  dnAligned.getScore() + " " + dnAligned.getDnScan());
             for (short score : scanDnMap.get(dnAligned.getDnScan()).getConfScores()) {
                 System.out.print(" " + score);
             }
             System.out.println();
         }
-*/
+/**/
 
         //Assemble the dnToLeft into contigs, keep only the one with highest score
         List<Contig> toLeftContigs = assembleDnToLeftAlign(dnAlignToLeftList, scanDnMap);
+        List<Contig> topToLeftContigs = null;
         if (toLeftContigs != null) {
             System.out.println("Contigs to Left");
 
@@ -184,13 +193,33 @@ public class UncertainRegionAssembler {
                 System.out.println(contig.toString());
             }
             */
-            System.out.println(toLeftContigs.get(0).toString());
-            assembledContigs.add(toLeftContigs.get(0));
+            //Pick the contig with best score for non overlap regions.
+            topToLeftContigs = pickTopContigs(toLeftContigs);
+            for (Contig topContig : topToLeftContigs) {
+                System.out.println(topContig.toString());
+                assembledContigs.add(topContig);
+            }
+            //System.out.println(toLeftContigs.get(0).toString());
+            //assembledContigs.add(toLeftContigs.get(0));
         }
 
         //If toRightContig and toLeftContig contains overlap, merge them to a new contig
         if (toRightContigs != null && toLeftContigs != null) {
-            List<Contig> bridgeContigs = findLeftRightOverlap(toRightContigs, toLeftContigs);
+            List<Contig> bridgeContigs = findLeftRightOverlap(topToRightContigs, topToLeftContigs);
+            if (bridgeContigs.size() > 0) {
+                System.out.println("Top Bridged contigs: ");
+                /*
+                for (Contig contig : bridgeContigs) {
+                    System.out.println(contig.toString());
+                }
+                */
+                List<Contig> topContigs = pickTopContigs(bridgeContigs);
+                for (Contig topContig : topContigs) {
+                    System.out.println(topContig.toString());
+                    //Todo need to add the overlapped contigs in
+ //                   assembledContigs.add(topContig);
+                }
+            }
         }
 
 
@@ -206,15 +235,18 @@ public class UncertainRegionAssembler {
         */
 
 
-        //Assemble the PSMs into one contig, use only PSM with good fragmentation
+        /* Only remain psm segment within range (startOfregion, endOfregion)
+        Assemble the PSMs into one contig, use only PSM with good fragmentation
+         */
         if (psmAlignedList != null) {
             //Use good quality peptide to form a contig
-            List<Contig> psmContigs = assembleConfidentPSM(psmAlignedList);
+            int regionStart = regionToAssemble.getStartPos();
+            int regionEnd = regionToAssemble.getEndPos();
+            List<Contig> psmContigs = assembleConfidentPSM(psmAlignedList, regionStart, regionEnd);
             if (psmContigs.size() > 0) {
                 System.out.println("db");
-                for (Contig psmContig : psmContigs) {
-                    System.out.println(psmContig.toString());
-                }
+                printContigs(psmContigs);
+
                 assembledContigs.addAll(psmContigs);
             }
         }
@@ -223,11 +255,57 @@ public class UncertainRegionAssembler {
 
     }
 
-    private List<Contig> assembleConfidentPSM(List<PSMAligned> psmAlignedList) {
+    /**
+     * Pick the contigs with highest score for each non-overlapped region.
+     * For example, 45-90 one contig with highest score in this region, 102-140 anothr contig with highest score
+     * @param contigs  contigs sorted by their scores.
+     * @return
+     */
+    List<Contig> pickTopContigs(List<Contig> contigs) {
+        List<Contig> topContigs = new ArrayList<>();
+        topContigs.add(contigs.get(0));
+
+        for (int i = 1; i < contigs.size(); i++) {
+            boolean isOverlapped = false;
+            for (Contig topContig : topContigs) {
+                if (overlap(contigs.get(i), topContig)) {
+                    isOverlapped = true;
+                    break;
+                }
+            }
+            if (!isOverlapped) {
+                topContigs.add(contigs.get(i));
+            }
+        }
+        return topContigs;
+    }
+
+
+    /**
+     * Helper function to judge whether two contigs have overlapped position.
+     * @param contig1
+     * @param contig2
+     * @return
+     */
+    boolean overlap(Contig contig1, Contig contig2) {
+        return ((contig1.gettStart() >= contig2.gettStart()) && (contig1.gettStart() <= contig2.gettEnd())) ||
+                ((contig1.gettEnd() >= contig2.gettStart()) && (contig1.gettEnd() <= contig2.gettEnd()));
+    }
+
+    private int[] copyConfs(short[] AAConfs) {
+        int[] confs = new int[AAConfs.length];
+        for (int i = 0; i < AAConfs.length; i++) {
+            confs[i] = AAConfs[i];
+        }
+        return confs;
+    }
+
+    private List<Contig> assembleConfidentPSM(List<PSMAligned> psmAlignedList, int regionStart, int regionEnd) {
         List<Contig> psmContigs = new ArrayList<>();
         int tStart = 5000;
         int tEnd = 0;
         char[] AAs = null;
+        int[] confs = null;
         int scoreSum = 0;
         int seqLen = 0;
 
@@ -235,12 +313,13 @@ public class UncertainRegionAssembler {
         for (PSMAligned psm : psmAlignedList) {
             //Discard inconfident PSMs.
             if (isConfidentPSM(psm)) {
+                confs = copyConfs(psm.getIonScores());
                 if (psm.getStart() < tStart) {
                     tStart = psm.getStart();
                 }
                 //If the psmAlign is not overlapped with the previous contig, create a contig
                 if ((psm.getStart() > tStart) && (psm.getStart() > tEnd)) {
-                    psmContigs.add(new Contig(tStart, tEnd, AAs, scoreSum));
+                    psmContigs.add(new Contig(tStart, tEnd, AAs, confs, scoreSum));
                     AAs = psm.getAAs();
                     tStart = psm.getStart();
                     tEnd = psm.getEnd();
@@ -275,7 +354,7 @@ public class UncertainRegionAssembler {
             }
         }
         if (seqLen > 0) {
-            psmContigs.add(new Contig(tStart, tEnd, AAs, scoreSum));
+            psmContigs.add(new Contig(tStart, tEnd, AAs, confs, scoreSum));
         }
         return psmContigs;
     }
@@ -283,6 +362,10 @@ public class UncertainRegionAssembler {
     /* if the psm contain ionScore smaller than 33, there is no fragment for four AAs, it is a inconfident one.*/
     private boolean isConfidentPSM(PSMAligned psm) {
         int scoreThresh = 30;
+
+        if (psm.getIonScores() == null) {
+            return false;
+        }
         for (short ionScore : psm.getIonScores()) {
             if (ionScore < scoreThresh) {
                 return false;
@@ -291,8 +374,14 @@ public class UncertainRegionAssembler {
         return true;
     }
 
+    /**
+     * Merge the overlapped contigs
+     * @param toRightContigs
+     * @param toLeftContigs
+     * @return
+     */
     private List<Contig> findLeftRightOverlap(List<Contig> toRightContigs, List<Contig> toLeftContigs) {
-        int minOverlapLen = 2;
+        int minOverlapLen = 3;
         List<Contig> bridgedContigs = new ArrayList<>();
         for (Contig toRightContig : toRightContigs) {
             char[] seq1 = toRightContig.getAAs();
@@ -301,15 +390,24 @@ public class UncertainRegionAssembler {
                 int overlapIndex = findOverlapIndex(seq1, seq2);
                 if (overlapIndex < seq1.length && (seq1.length - overlapIndex) >= minOverlapLen) {
                     char[] mergedAA = new char[overlapIndex + 1 + seq2.length];
+                    int[] confs = new int[overlapIndex + 1 + seq2.length];
                     for (int i = 0; i < overlapIndex; i++) {
                         mergedAA[i] = seq1[i];
+                        confs[i] = toRightContig.getConfs()[i];
                     }
                     for (int i = 0; i < seq2.length; i++) {
                         mergedAA[i + overlapIndex] = seq2[i];
+                        confs[i + overlapIndex] += seq2[i];
                     }
 
+                    /* Create the merged contigs to have the score of the summation of the two contigs.
+                       Although the mergedContigs might have insertion or deletion, in which case the
+                       length of merged contig does not equal to the summation of the two lengths, still
+                       use the start and end of the two merged contigs for later convenience to chain this
+                       assembled contigs to correct positions on the template sequence.
+                     */
                     Contig mergedContig = new Contig(toRightContig.gettStart(), toLeftContig.gettEnd(),
-                                    mergedAA, (toRightContig.getScore() + toLeftContig.getScore()));
+                                    mergedAA, confs, (toRightContig.getScore() + toLeftContig.getScore()));
                     bridgedContigs.add(mergedContig);
 
                     /*
@@ -387,7 +485,9 @@ public class UncertainRegionAssembler {
         List<Contig> contigs = new ArrayList<>();
         DenovoAligned firstDnAlign = dnAlignToRightList.get(0);
         Contig firstContig = new Contig(firstDnAlign.gettStart(), -1,
-                scanDnMap.get(firstDnAlign.getDnScan()).getAAs(), firstDnAlign.getScore());
+                scanDnMap.get(firstDnAlign.getDnScan()).getAAs(),
+                copyConfs(scanDnMap.get(firstDnAlign.getDnScan()).getConfScores()),
+                firstDnAlign.getScore());
         contigs.add(firstContig);
         //System.out.println("Debug " + firstContig.toString());
 
@@ -423,7 +523,9 @@ public class UncertainRegionAssembler {
             } else {
                 //If not overlapped, add the dnAligned as a new contig
                 Contig newContig = new Contig(dnAligned.gettStart(), -1,
-                        scanDnMap.get(dnAligned.getDnScan()).getAAs(), dnAligned.getScore());
+                        scanDnMap.get(dnAligned.getDnScan()).getAAs(),
+                        copyConfs(scanDnMap.get(dnAligned.getDnScan()).getConfScores()),
+                        dnAligned.getScore());
                 //System.out.println("Debug new contig: " );
                 //System.out.println(newContig.toString());
                 contigs.add(newContig);
@@ -490,7 +592,9 @@ public class UncertainRegionAssembler {
         List<Contig> contigs = new ArrayList<>();
         DenovoAligned firstDnAlign = dnAlignToLeftList.get(0);
         Contig firstContig = new Contig(-1, firstDnAlign.gettEnd(),
-                scanDnMap.get(firstDnAlign.getDnScan()).getAAs(), firstDnAlign.getScore());
+                scanDnMap.get(firstDnAlign.getDnScan()).getAAs(),
+                copyConfs(scanDnMap.get(firstDnAlign.getDnScan()).getConfScores()),
+                firstDnAlign.getScore());
         contigs.add(firstContig);
 
         for (int i = 1; i < dnAlignToLeftList.size(); i++) {
@@ -528,7 +632,9 @@ public class UncertainRegionAssembler {
             } else {
                 //If not overlapped, add the dnAligned as a new contig
                 Contig newContig = new Contig(-1, dnAligned.gettEnd(),
-                        scanDnMap.get(dnAligned.getDnScan()).getAAs(), dnAligned.getScore());
+                        scanDnMap.get(dnAligned.getDnScan()).getAAs(),
+                        copyConfs(scanDnMap.get(firstDnAlign.getDnScan()).getConfScores()),
+                        dnAligned.getScore());
                 contigs.add(newContig);
             }
         }
@@ -592,12 +698,17 @@ public class UncertainRegionAssembler {
     private void generateCandidateTemplate(TemplateHooked templateHooked, List<Contig> assembledContigs) {
         System.out.println("Debug:" + templateHooked.getTemplateAccession());
 
-        List<Contig> mergedContigs = mergeContigs(assembledContigs);
-        Collections.sort(mergedContigs, Contig.cmpScore());
+        //TODO don't need merge.
+        //List<Contig> mergedContigs = mergeContigs(assembledContigs);
+        //Collections.sort(mergedContigs, Contig.cmpScore());
+
+        Collections.sort(assembledContigs, Contig.cmpScore());
+        printContigs(assembledContigs);
 
         char[] AAs = templateHooked.getSeq().clone();
 
-        for (Contig contig : mergedContigs) {
+        //for (Contig contig : mergedContigs) {
+        for (Contig contig : assembledContigs) {
             int tStart = contig.gettStart() < 0 ? 0 : contig.gettStart();
             int tEnd = contig.gettEnd();
 
@@ -611,10 +722,56 @@ public class UncertainRegionAssembler {
         templateHooked.setModifiedTemplates(candidateTemplateSeqs);
     }
 
+    /**
+     * A new candidate template generator which connect segments of template and assembled contigs.
+     * Because the contigs assembled based on denovo result might contain deletion or insertion, the
+     * method of generating new template is by chaining segments of old templates and the assembled contigs.
+     * @param templateHooked
+     * @param assembledContigs
+     */
+    private void new_generateCandidateTemplate(TemplateHooked templateHooked, List<Contig> assembledContigs) {
+        System.out.println("Debug:" + templateHooked.getTemplateAccession());
+
+        //TODO don't need merge.
+        //List<Contig> mergedContigs = mergeContigs(assembledContigs);
+        //Collections.sort(mergedContigs, Contig.cmpScore());
+
+        Collections.sort(assembledContigs, Contig.cmpTStart());
+        List<Character> newTemplate = new ArrayList<>();
+
+        char[] AAs = templateHooked.getSeq().clone();
+        int start = 0;
+
+        //for (Contig contig : mergedContigs) {
+        for (Contig contig : assembledContigs) {
+            int tStart = contig.gettStart() < 0 ? 0 : contig.gettStart();
+            int tEnd = contig.gettEnd();
+
+            for (int i = start; i < tStart; i++) {
+                newTemplate.add(AAs[i]);
+            }
+            for (char c : contig.getAAs()) {
+                newTemplate.add(c);
+            }
+            start = contig.gettEnd() + 1;
+        }
+        for (int i = start; i < AAs.length; i++) {
+            newTemplate.add(AAs[i]);
+        }
+
+        char[] newAAs = new char[newTemplate.size()];
+        for (int i = 0; i < newTemplate.size(); i++) {
+            newAAs[i] = newTemplate.get(i);
+        }
+
+        List<char[]> candidateTemplateSeqs = new ArrayList<>();
+        candidateTemplateSeqs.add(newAAs);
+        templateHooked.setModifiedTemplates(candidateTemplateSeqs);
+    }
 
 
 
-    /* Merge overlapped contigs, choose the AAs with higher score as consensus */
+    /* Merge overlapped contigs, choose the AAs with higher score as consensus.  there is bug in this function */
     private List<Contig> mergeContigs(List<Contig> assembledContigs) {
         Collections.sort(assembledContigs, Contig.cmpTStart());
         List<Contig> mergedContigs = new ArrayList<>();
@@ -665,6 +822,12 @@ public class UncertainRegionAssembler {
 
     }
 
+    private void printContigs(List<Contig> contigs) {
+        for (Contig contig : contigs) {
+            System.out.println(contig.toString());
+        }
+    }
+
     private Set<DenovoAligned> mergeDuplicateDn(Set<DenovoAligned> dnAlignSet, HashMap<String, DenovoOnly> scanDnMap) {
         Set<DenovoAligned> mergedDnAlignedSet = new HashSet<>();
         Map<String, DenovoAligned> AADnMap = new HashMap<>();
@@ -711,12 +874,22 @@ public class UncertainRegionAssembler {
                 assembledContigs.addAll(assembleOneRegion(regionToAssemble, scanDnMap));
             }
 
-            System.out.println("Assembled contigs");
-            for (Contig assembledContig : assembledContigs) {
+            /*  There is some problem with assemble only contigs with top score because there are some other part not applied.
+                Need to be considered again, how to chain confident AA or kmer other than segment.
+             */
+            /*
+            System.out.println("Assembled contigs with top score");
+            Collections.sort(assembledContigs, Contig.cmpReverseScore());
+            List<Contig> topAssembledContigs = pickTopContigs(assembledContigs);
+            for (Contig assembledContig : topAssembledContigs) {
                 System.out.println(assembledContig.toString());
             }
-
             //Select contigs with max score and apply to the template to generate candidate template.
+            generateCandidateTemplate(templateHooked, topAssembledContigs);
+
+            */
+
+            System.out.println("Assembled contigs");
             generateCandidateTemplate(templateHooked, assembledContigs);
 
         }

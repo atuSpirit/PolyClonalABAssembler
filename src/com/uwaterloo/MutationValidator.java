@@ -222,10 +222,10 @@ public class MutationValidator {
             if (ratio > threshold) {
                 significantMutatedPattern.add(pattern);
                 //Debug
-                System.out.printf("Debug %s %.4f\n", pattern, score / total);
+                //System.out.printf("Debug %s %.4f\n", pattern, score / total);
             } else {
                 //Debug
-                System.out.printf("Debug unsignificant %s %.4f\n", pattern, score / total);
+                //System.out.printf("Debug unsignificant %s %.4f\n", pattern, score / total);
             }
         }
 
@@ -467,12 +467,13 @@ public class MutationValidator {
         int start = psmAligned.getStart();
         int end = psmAligned.getEnd() - start;
 
+        /*
         if (psmAligned.getPeptide().contains("del")) {
             System.err.println("Error in extractAAComb() : scan " + psmAligned.getScan() +
                     " contains del " + psmAligned.getPeptide());
             //TODO: to deal with del part
             return null;
-        }
+        } */
 
         int size = posList.size();
         char[] AAComb = new char[size];
@@ -646,7 +647,7 @@ public class MutationValidator {
             //int pos = posWithMaxMutationNumList.get(0);
             Set<String> variationPosChecked = new HashSet<>();
             for (int pos : posWithMaxMutationNumList) {
-                System.out.println("pos: " + pos);
+                //System.out.println("pos: " + pos);
                 while (true) {
                     List<PSMAligned> psmAlignedList = getListOfPSMAlignedGivenPosAndMutatedNum(templateHooked, pos,
                             mutationNum);

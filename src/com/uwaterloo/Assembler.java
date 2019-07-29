@@ -1,6 +1,8 @@
 package com.uwaterloo;
 
 import com.uwaterloo.Reader.*;
+import com.uwaterloo.Tools.CoverageConfEvaluator;
+import com.uwaterloo.Tools.IntactMassValidater;
 
 import java.io.*;
 import java.util.*;
@@ -17,11 +19,20 @@ public class Assembler {
         dir = "D:\\Hao\\result\\ab19001.5enzymes_SPIDER_17\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.new_SPIDER_91\\";
         dir = "D:\\Hao\\result\\ab19001.5enzymes.4tempaltes_SPIDER_86\\";
-        dir = "D:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_46\\";
+
+        dir = "/Users/hao/data/ab19001.polyclonal.templateSelected_SPIDER_37/";
+
+        dir = "C:\\Hao\\result\\ab19001.polyclonal.05.05_SPIDER_19\\";
+        //dir = "C:\\Hao\\result\\ab19001.polyclonal.templateSelected_SPIDER_37\\";
+        //dir = "C:\\Hao\\result\\Nuno.HC_SPIDER_19\\";
+        dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_32\\";
+
         //dir = "/Users/hao/data/ab19001.5enzymes.new_SPIDER_33/";
         //dir = "D:\\Hao\\result\\Nuno2016_HC_SPIDER_66\\";
-        //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_20\\";
+        dir = "C:\\Hao\\result\\Water_mAB.clean_SPIDER_14\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
+        dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_38\\";
+        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_71\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -41,12 +52,7 @@ public class Assembler {
         dnList = dnReader.filterDnByConfScore(dnList, confScoreThresh, inConfidentAANumThresh);
         System.out.println("filtered denovo size: " + dnList.size());
 
-        String templateFasta = dir + "Nuno.2016.heavy.template.fasta";
-        //templateFasta = dir + "Waters_mAB.template_top4.fasta";
-        templateFasta = dir + "ab19001.5enzymes.template_top8.fasta";
-        templateFasta = dir + "candidate_template2.mergedFrag.fasta";
-        templateFasta = dir + "Nuno2016.HC_LC.template.top4.fasta";
-        templateFasta = dir + "proteins.fasta";
+        String templateFasta = dir + "proteins.fasta";
         TemplatesLoader loader = new TemplatesLoader();
         List<Template> templateList = loader.loadTemplateFasta(templateFasta);
 
@@ -67,99 +73,175 @@ public class Assembler {
             listOfScanPSMMap.add(scanPSMMap);
         }
 
-        HashMap<String, DenovoOnly> scanDnMap = buildScanDnMap(dnList);
-        //Map Denovo only peptides to templates
-        TemplateDenovoAligner dnAligner = new TemplateDenovoAligner(dnList, scanDnMap);
-        short kmerSize = 6;
-        dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
-        double significantThreshold = 0.1;
 
-        boolean useDenovo = false;
+        //The ratio threshold that a mutation could be viewed as significant
+        double significantThreshold = 0.15;  //Increase from 0.1 to 0.2 for Nuno data which is less accurate
+        int minFreq = 3;    //The threshold that a position will consider as a significant mutation type
+
+        boolean useDenovo = true;
         if (!useDenovo) {
             //Generating candidate templates using DB and Spider PSMs
-            generateCandidateTemplates(templateHookedList, listOfScanPSMMap, significantThreshold);
+            generateCandidateTemplates(templateHookedList, listOfScanPSMMap, significantThreshold, minFreq);
         } else {
             //Generating candidate templates using denovo only results
+            HashMap<String, DenovoOnly> scanDnMap = buildScanDnMap(dnList);
+            //Map Denovo only peptides to templates
+            TemplateDenovoAligner dnAligner = new TemplateDenovoAligner(dnList, scanDnMap);
+            short kmerSize = 5;
+            dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
+
             float dbDnRatioThresh = 1.5f;
             UncertainRegionAssembler uncertainRegionAssembler = new UncertainRegionAssembler();
             uncertainRegionAssembler.assembleUncertainRegions(templateHookedList,
                                                 listOfScanPSMMap, scanDnMap, dbDnRatioThresh);
         }
 
+        System.out.println("Print Coverage Confidence score along template. ");
+        printCoverageConfsAlongTemplates(templateHookedList);
+
+        //System.out.println("Intact mass of candidate templates");
+        //printIntactMassForCandidateTemplates(templateHookedList);
+
         //Export candidate templates together with contaminant sequences as a fasta file
         String contaminantFile = "D:\\Hao\\database\\contaminants.fasta";
+        contaminantFile = "/Users/hao/data/contaminants.fasta";
+
+        contaminantFile = "C:\\hao\\database\\contaminants.fasta";
         //contaminantFile = "/Users/hao/data/contaminants.fasta";
-        String candidateTemplateWithContaminant = "D:\\Hao\\result\\database\\candidate_template_with_contaminant.fasta";
+        String candidateTemplateWithContaminant = "C:\\Hao\\database\\candidate_template_with_contaminant.fasta";
+
         //candidateTemplateWithContaminant = "/Users/hao/data/candidate_template_with_contaminant.fasta";
         int min_template_length = 0;  //If a template length is shorter than the min_length, don't output it.
 
+        System.out.println("Exporting candidate templates: ");
         exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
 
     }
 
+    private void printCoverageConfsAlongTemplates(List<TemplateHooked> templateHookedList) {
+        CoverageConfEvaluator confEvaluator = new CoverageConfEvaluator();
+        for (TemplateHooked templateHooked : templateHookedList) {
+            int[] coverageConfs = confEvaluator.evaluateCoverageConf(templateHooked);
+            System.out.println(templateHooked.getTemplateAccession());
+            for (int conf : coverageConfs) {
+                System.out.print(conf + " ");
+            }
+            System.out.println();
+        }
+    }
+
+    private void printIntactMassForCandidateTemplates(List<TemplateHooked> templateHookedList) {
+        for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
+            List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
+            String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
+            if (candidateTemplates == null) {
+                continue;
+            }
+            System.out.println(templateAccession);
+            for (int i = 0; i < candidateTemplates.size(); i++) {
+                String candidateTemplateWithInfo = new String(candidateTemplates.get(i));
+                String[] fields = candidateTemplateWithInfo.split(">");
+                String infoString = fields[1];
+                String templateString = fields[2];
+                float intactMass = IntactMassValidater.computeIntactMass(templateString.toCharArray());
+                System.out.println(infoString + "\t" + intactMass);
+            }
+        }
+    }
 
     /* Export candidate templates together with contaminant sequences as a fasta file */
     private void exportCandidateTemplates(List<TemplateHooked> templateHookedList, int min_template_length,
                                           String candidateTemplateWithContaminant, String contaminantFile) {
-        String seqsToExport = "";
-        for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
-            List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
-            String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
-            if (candidateTemplates == null) continue;   //TODO
-            for (int i = 0; i < candidateTemplates.size(); i++) {
-                //Only export template longer than min_template_length to keep only heavy or light chain. Delete fragments.
-                if (candidateTemplates.get(i).length < min_template_length) {
-                    continue;
-                }
-
-                if (candidateTemplates.size() < 2) {
-                    System.out.println(">" + templateAccession);
-                    System.out.println(new String(candidateTemplates.get(i)));
-                    seqsToExport += ">" + templateAccession + "\n";
-                    seqsToExport += new String(candidateTemplates.get(i)) + "\n";
-                } else {
-                    System.out.println(">can" + (i + 1) + "_" + templateAccession);
-                    System.out.println(new String(candidateTemplates.get(i)));
-                    seqsToExport += ">can" + (i + 1) + "_" + templateAccession + "\n";
-                    seqsToExport += new String(candidateTemplates.get(i)) + "\n";
-                }
-            }
-            //Debug
-            //break;
-        }
-
-        //Attach the contaminant sequences
-        String contaminantSeqs = null;
-        try (BufferedReader br = new BufferedReader(new FileReader(contaminantFile))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                seqsToExport += line + "\n";
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
         //Export the sequences to a file
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(candidateTemplateWithContaminant))) {
-            bw.write(seqsToExport);
+
+            for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
+                List<char[]> candidateTemplates = templateHookedList.get(templateId).getModifiedSeq();
+                String templateAccession = templateHookedList.get(templateId).getTemplateAccession();
+
+                if (candidateTemplates == null || candidateTemplates.size() == 0) {
+                    //If no candidate, means no change need to make to the template, export the template directly
+                    System.out.println(">" + templateAccession);
+                    System.out.println(new String(templateHookedList.get(templateId).getSeq()));
+                    bw.write(">" + templateAccession);
+                    bw.write("\n");
+                    bw.write(new String(templateHookedList.get(templateId).getSeq()));
+                    bw.write("\n");
+                    continue;
+                }
+                for (int i = 0; i < candidateTemplates.size(); i++) {
+                    //Only export template longer than min_template_length to keep only heavy or light chain. Delete fragments.
+                    if (candidateTemplates.get(i).length < min_template_length) {
+                        continue;
+                    }
+
+                    if (candidateTemplates.size() < 2) {
+                        System.out.println(">" + templateAccession);
+                        System.out.println(new String(candidateTemplates.get(i)));
+                        bw.write(">" + templateAccession);
+                        bw.write("\n");
+                        bw.write(new String(candidateTemplates.get(i)));
+                        bw.write("\n");
+                    } else {
+                        // System.out.println(">can" + (i + 1) + "_" + templateAccession);
+                        // System.out.println(new String(candidateTemplates.get(i)));
+
+                        bw.write(">can" + (i + 1) + "_" + templateAccession);
+
+
+                        if (candidateTemplates.get(i)[0] != '>') {
+                            bw.write("\n");
+                            bw.write(new String(candidateTemplates.get(i)));
+                        } else {
+                            String candidateTemplateWithInfo = new String(candidateTemplates.get(i));
+                            String[] fields = candidateTemplateWithInfo.split(">");
+                            String infoString = fields[1];
+                            String templateString = fields[2];
+                            bw.write("_" + infoString + "\n");
+                            bw.write(templateString);
+                        }
+
+                        bw.write("\n");
+                    }
+                }
+                //Debug
+                //break;
+            }
+
+            //Attach the contaminant sequences
+            String contaminantSeqs = null;
+            try (BufferedReader br = new BufferedReader(new FileReader(contaminantFile))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    bw.write(line);
+                    bw.write("\n");
+                }
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
+
+
     /*
     Attach the candidate templates to the mutated templates in templateHookedList
      */
     private void generateCandidateTemplates(List<TemplateHooked> templateHookedList,
                                             List<HashMap<String, PSMAligned>> listOfScanPSMMap,
-                                            double significantThreshold) {
+                                            double significantThreshold,
+                                            int minFreq) {
         for (int templateId = 0; templateId < templateHookedList.size(); templateId++) {
             System.out.println("Template " + templateId + " " + templateHookedList.get(templateId).getTemplateAccession());
             TemplateHooked aTemplateHooked = templateHookedList.get(templateId);
             List<char[]> top2CandidateTemplates = findCandidateForOneTemplate(aTemplateHooked,
-                    listOfScanPSMMap.get(templateId), significantThreshold);
+                    listOfScanPSMMap.get(templateId), significantThreshold, minFreq);
             templateHookedList.get(templateId).setModifiedTemplates(top2CandidateTemplates);
             //Debug
             //break;
@@ -175,12 +257,19 @@ public class Assembler {
         for (int i = 0; i < psmList.size(); i++) {
             String scan = psmList.get(i).getScan();
             if (scanIonScoresMap.containsKey(scan)) {
-                psmList.get(i).setIonScores(scanIonScoresMap.get(scan));
+                short[] ionScores = scanIonScoresMap.get(scan);
+                /*
+                if (psmList.get(i).getPeptide().contains("-")) {
+                    ionScores = modifyIonScoreForDeletion(psmList.get(i).getPeptide(), ionScores);
+                }*/
+                psmList.get(i).setIonScores(ionScores);
             } else {
                 System.err.println("scan " + scan + " does not contain fragment ions information!");
             }
         }
     }
+
+
     /* Trim the C end of candidate template if no reads covered the C end */
     private void trimTemplateCEnd(TemplateHooked aTemplateHooked, List<char[]> topCandidateTemplates) {
         int pos = 0;
@@ -206,13 +295,13 @@ public class Assembler {
 
     private List<char[]> findCandidateForOneTemplate(TemplateHooked aTemplateHooked,
                                                      HashMap<String, PSMAligned> scanPSMMap,
-                                                     double significantThreshold) {
+                                                     double significantThreshold, int minFreq) {
         MutationValidator validator = new MutationValidator();
         List<HashMap<List<Integer>, List<MutationsPattern>>> mutationsOnTemplateList = validator.findSignificantMutations(aTemplateHooked, scanPSMMap, significantThreshold);
         //  printMutationsOnTemplate(mutationsOnTemplateList);
 
         TemplateCandidateBuilder templateCandidateBuilder = new TemplateCandidateBuilder(mutationsOnTemplateList);
-        List<char[]> topCandidateTemplates = templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked, scanPSMMap, significantThreshold);
+        List<char[]> topCandidateTemplates = templateCandidateBuilder.buildCandidateTemplate(aTemplateHooked, scanPSMMap, significantThreshold, minFreq);
 
 //        trimTemplateCEnd(aTemplateHooked, topCandidateTemplates);
 
