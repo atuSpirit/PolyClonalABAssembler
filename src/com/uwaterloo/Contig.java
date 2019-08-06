@@ -86,4 +86,18 @@ public class Contig {
         return tStart + " " + tEnd + " " + new String(AAs) + " " + score;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || o.getClass() != this.getClass()) {
+            return false;
+        }
+        Contig contig = (Contig) o;
+        return (contig.gettStart() == this.gettStart()) &&
+                (contig.gettEnd() == this.gettEnd()) &&
+                (contig.getScore() == this.getScore()) &&
+                (java.util.Arrays.equals(contig.getAAs(), this.getAAs()));
+    }
 }

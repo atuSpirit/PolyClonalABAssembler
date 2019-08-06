@@ -247,11 +247,11 @@ public class TemplatesSelecter {
         dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_12\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_22\\";
         dir = "C:\\hao\\result\\NIST_Waters.clean_SPIDER_11\\";
-        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_65\\";
+        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_84\\";
 
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
-        int topK = 4;
+        int topK = 10;
         int scoreThresh = 100;
 
         //If selecting from all antibody database, set it less than 1. If choose from template candidate, set it to 1
