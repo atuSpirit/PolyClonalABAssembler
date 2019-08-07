@@ -240,7 +240,7 @@ public class UncertainRegionAssembler {
             int regionStart = regionToAssemble.getStartPos();
             int regionEnd = regionToAssemble.getEndPos();
             List<Contig> psmContigs = assembleConfidentPSM(psmAlignedList, regionStart, regionEnd);
-            if (psmContigs.size() > 0) {
+            if ((psmContigs != null) && (psmContigs.size() > 0)) {
                 System.out.println("db");
                 printContigs(psmContigs);
 
@@ -285,8 +285,8 @@ public class UncertainRegionAssembler {
      * @return
      */
     boolean overlap(Contig contig1, Contig contig2) {
-        return ((contig1.gettStart() >= contig2.gettStart()) && (contig1.gettStart() <= contig2.gettEnd())) ||
-                ((contig1.gettEnd() >= contig2.gettStart()) && (contig1.gettEnd() <= contig2.gettEnd()));
+        return !(((contig1.gettStart() >= contig2.gettStart()) && (contig1.gettStart() >= contig2.gettEnd())) ||
+                ((contig2.gettStart() >= contig1.gettStart()) && (contig2.gettStart() >= contig1.gettEnd())));
     }
 
     private int[] copyConfs(short[] AAConfs) {
@@ -297,57 +297,81 @@ public class UncertainRegionAssembler {
         return confs;
     }
 
+    /**
+     * Assemble confident psms into one contig
+     * @param psmAlignedList PSM are sorted by psm.tStart ascending, then score descending
+     * @param regionStart
+     * @param regionEnd
+     * @return
+     */
     private List<Contig> assembleConfidentPSM(List<PSMAligned> psmAlignedList, int regionStart, int regionEnd) {
+        if (psmAlignedList.size() == 0) return null;
+
         List<Contig> psmContigs = new ArrayList<>();
-        int tStart = 5000;
-        int tEnd = 0;
-        char[] AAs = null;
-        int[] confs = null;
+        PSMAligned firstPsm = psmAlignedList.get(0);
+        int tStart = firstPsm.getStart();
+        int tEnd = firstPsm.getEnd();
+        char[] AAs = firstPsm.getAAs();
+        int[] confs = copyConfs(firstPsm.getIonScores());
         int scoreSum = 0;
-        int seqLen = 0;
+        for (short ionScore : firstPsm.getIonScores()) {
+            scoreSum += ionScore;
+        }
+        int seqLen = AAs.length;
 
-        //psmAlignedList is sorted by psm.tStart
-        for (PSMAligned psm : psmAlignedList) {
+        int psmListSize = psmAlignedList.size();
+        for (int index = 1; index < psmListSize; index++) {
+            PSMAligned psm = psmAlignedList.get(index);
             //Discard inconfident PSMs.
-            if (isConfidentPSM(psm)) {
+            if (!isConfidentPSM(psm)) continue;
+
+            //If the psmAlign is not overlapped with the previous contig, store the previous contig. Start a new contig
+            if (psm.getStart() > tEnd) {
+                //Store the previous contigs in psmContigs
+                psmContigs.add(new Contig(tStart, tEnd, AAs, confs, scoreSum));
+
+                //Start a new contig with current psm
+                AAs = psm.getAAs();
                 confs = copyConfs(psm.getIonScores());
-                if (psm.getStart() < tStart) {
-                    tStart = psm.getStart();
-                }
-                //If the psmAlign is not overlapped with the previous contig, create a contig
-                if ((psm.getStart() > tStart) && (psm.getStart() > tEnd)) {
-                    psmContigs.add(new Contig(tStart, tEnd, AAs, confs, scoreSum));
-                    AAs = psm.getAAs();
-                    tStart = psm.getStart();
-                    tEnd = psm.getEnd();
-                    scoreSum = 0;
-                    for (short ionScore : psm.getIonScores()) {
-                        scoreSum += ionScore;
-                    }
-                    seqLen = AAs.length;
-                    continue;
-                }
-                if (psm.getEnd() > tEnd) {
-                    tEnd = psm.getEnd();
-                    seqLen = tEnd - tStart + 1;
-
-                    if (AAs == null) {
-                        AAs = psm.getAAs();
-                    } else {
-                        char[] newAAs = new char[seqLen];
-                        for (int i = tStart; i < psm.getStart(); i++) {
-                            newAAs[i - tStart] = AAs[i - tStart];
-                        }
-                        for (int i = psm.getStart(); i <= tEnd; i++) {
-                            newAAs[i -tStart] = psm.getAAs()[i - psm.getStart()];
-                        }
-                        AAs = newAAs;
-                    }
-                }
-
+                tStart = psm.getStart();
+                tEnd = psm.getEnd();
+                scoreSum = 0;
                 for (short ionScore : psm.getIonScores()) {
                     scoreSum += ionScore;
                 }
+                seqLen = AAs.length;
+            } else {
+                //psm overlapped with current contig
+                if (psm.getEnd() > tEnd) {
+                    //psm is not nested in the contig, extend contig AA and update confs
+                    seqLen = psm.getEnd() - tStart + 1; // new contig length
+
+                    char[] newAAs = new char[seqLen];
+                    int[] newConfs = new int[seqLen];
+                    for (int i = tStart; i < psm.getStart(); i++) {
+                        newAAs[i - tStart] = AAs[i - tStart];
+                    }
+                    for (int i = tStart; i < tEnd; i++) {
+                        newConfs[i - tStart] = confs[i - tStart];
+                    }
+                    for (int i = psm.getStart(); i <= psm.getEnd(); i++) {
+                        newAAs[i -tStart] = psm.getAAs()[i - psm.getStart()];
+                        newConfs[i - tStart] += psm.getIonScores()[i - psm.getStart()];
+                    }
+
+                    AAs = newAAs;
+                    confs = newConfs;
+                    tEnd = psm.getEnd();
+                } else {
+                    //For nested psms, update only the confs
+                    for (int i = psm.getStart(); i < psm.getEnd(); i++) {
+                        confs[i - tStart] += psm.getConfScores()[i - psm.getStart()];
+                    }
+                }
+            }
+
+            for (short ionScore : psm.getIonScores()) {
+                scoreSum += ionScore;
             }
         }
         if (seqLen > 0) {
@@ -504,6 +528,7 @@ public class UncertainRegionAssembler {
         for (int i = 1; i < dnAlignToRightList.size(); i++) {
             DenovoAligned dnAligned = dnAlignToRightList.get(i);
             char[] dnAAs = scanDnMap.get(dnAligned.getDnScan()).getAAs();
+            int[] dnConfs = copyConfs(scanDnMap.get(dnAligned.getDnScan()).getConfScores());
             int dnTStart = dnAligned.gettStart();
             int overlappedContigIndex = findContigRightOverlap(contigs, dnAAs, dnTStart);
 
@@ -520,13 +545,34 @@ public class UncertainRegionAssembler {
                 int endIndex = dnAAs.length - (contigAAs.length - startIndex);
                 if (endIndex > 0) {
                     char[] mergedAAs = new char[contigAAs.length + endIndex];
+                    int[] mergedConfs = new int[contigAAs.length + endIndex];
+
+                    //Update the merged AAs
                     for (int j = 0; j < startIndex; j++) {
                         mergedAAs[j] = contigAAs[j];
                     }
+
                     for (int j = 0; j < dnAAs.length; j++) {
                         mergedAAs[j + startIndex] = dnAAs[j];
                     }
                     contig.setAAs(mergedAAs);
+
+                    /* Update the merged confs. The new confs of merged contigs
+                        is the summation of confs of two overlapped contigs on
+                        each position.
+                     */
+                    for (int j = 0; j < contigAAs.length; j++) {
+                        mergedConfs[j] = contig.getConfs()[j];
+                    }
+                    for (int  j = 0; j < dnAAs.length; j++) {
+                        mergedConfs[j + startIndex] += dnConfs[j];
+                    }
+                    contig.setConfs(mergedConfs);
+                } else {
+                    //If the dnAA is nested in contig, only update the confs
+                    for (int j = 0; j < dnAAs.length; j++) {
+                        contig.getConfs()[j + startIndex] += dnConfs[j];
+                    }
                 }
                 //System.out.println("Debug Extended contig ");
                 //System.out.println(contig.toString());
@@ -534,7 +580,7 @@ public class UncertainRegionAssembler {
                 //If not overlapped, add the dnAligned as a new contig
                 Contig newContig = new Contig(dnAligned.gettStart(), -1,
                         scanDnMap.get(dnAligned.getDnScan()).getAAs(),
-                        copyConfs(scanDnMap.get(dnAligned.getDnScan()).getConfScores()),
+                        dnConfs,
                         dnAligned.getScore());
                 //System.out.println("Debug new contig: " );
                 //System.out.println(newContig.toString());
@@ -610,6 +656,7 @@ public class UncertainRegionAssembler {
         for (int i = 1; i < dnAlignToLeftList.size(); i++) {
             DenovoAligned dnAligned = dnAlignToLeftList.get(i);
             char[] dnAAs = scanDnMap.get(dnAligned.getDnScan()).getAAs();
+            int[] dnConfs = copyConfs(scanDnMap.get(dnAligned.getDnScan()).getConfScores());
             int dnTEnd = dnAligned.gettEnd();
 
             int overlappedContigIndex = findContigLeftOverlap(contigs, dnAAs, dnTEnd);
@@ -626,11 +673,14 @@ public class UncertainRegionAssembler {
 
                 //System.out.println("Debug " + contig.toString());
 
-                //Extend the AAs to right if there are more AAs
+                //Extend the AAs to left if there are more AAs
                 int endIndex = dnAAs.length - (contigAAs.length - startIndex);
                 if (endIndex > 0) {
                     int newLength = contigAAs.length + endIndex;
                     char[] mergedAAs = new char[newLength];
+                    int[] mergedConfs = new int[newLength];
+
+                    //Update the merged AAs
                     for (int j = 0; j < startIndex; j++) {
                         mergedAAs[newLength - 1 - j] = contigAAs[contigAAs.length - 1 - j];
                     }
@@ -638,12 +688,26 @@ public class UncertainRegionAssembler {
                         mergedAAs[newLength - 1 - j - startIndex] = dnAAs[dnAAs.length - 1 - j];
                     }
                     contig.setAAs(mergedAAs);
+
+                    //Update the merged confs in each position
+                    for (int j = 0; j < contigAAs.length; j++) {
+                        mergedConfs[j] = contig.getConfs()[j];
+                    }
+                    for (int j = 0; j < dnAAs.length; j++) {
+                        mergedConfs[newLength - 1 - j - startIndex] += dnConfs[dnAAs.length - 1 - j];
+                    }
+                    contig.setConfs(mergedConfs);
+                } else {
+                    //If the dnAA is nested in ContigAA
+                    for (int j = 0; j < dnAAs.length; j++) {
+                        contig.getConfs()[startIndex + j] += dnConfs[j];
+                    }
                 }
             } else {
                 //If not overlapped, add the dnAligned as a new contig
                 Contig newContig = new Contig(-1, dnAligned.gettEnd(),
                         scanDnMap.get(dnAligned.getDnScan()).getAAs(),
-                        copyConfs(scanDnMap.get(firstDnAlign.getDnScan()).getConfScores()),
+                        dnConfs,
                         dnAligned.getScore());
                 contigs.add(newContig);
             }

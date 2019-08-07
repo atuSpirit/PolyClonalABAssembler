@@ -83,7 +83,11 @@ public class Contig {
 
     @Override
     public String toString() {
-        return tStart + " " + tEnd + " " + new String(AAs) + " " + score;
+        String strBuffer = tStart + " " + tEnd + " " + new String(AAs) + " " + score + ": ";
+        for (int conf : confs) {
+            strBuffer += String.valueOf(conf) + " ";
+        }
+        return strBuffer;
     }
 
     @Override
