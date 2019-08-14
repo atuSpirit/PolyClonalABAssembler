@@ -9,8 +9,11 @@ public class DenovoAligned implements Comparable<DenovoAligned> {
     String dnScan;
     int dnStart;
     int dnEnd;
+    /* When build the denovoAlign and assign denovo to best match template, the score
+        stores the summation of alignment score.  Later in the process of assembly,
+        the score will be updated to the summation of scores of all positions.
+     */
     int score;
-
 
     public DenovoAligned(int templateId, int tStart, int tEnd,
                          String dnScan, int dnStart, int dnEnd, int score) {
