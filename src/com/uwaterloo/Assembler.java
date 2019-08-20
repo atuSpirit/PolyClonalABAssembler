@@ -32,7 +32,7 @@ public class Assembler {
         dir = "C:\\Hao\\result\\Water_mAB.clean_SPIDER_14\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_38\\";
-        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_140\\";
+        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_151\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -77,7 +77,7 @@ public class Assembler {
         double significantThreshold = 0.3;  //Increase from 0.1 to 0.2 for Nuno data which is less accurate
         int minFreq = 3;    //The threshold that a position will consider as a significant mutation type
 
-        boolean useDenovo = true;
+        boolean useDenovo = false;
         if (!useDenovo) {
             //Generating candidate templates using DB and Spider PSMs
             generateCandidateTemplates(templateHookedList, listOfScanPSMMap, significantThreshold, minFreq);
@@ -90,9 +90,11 @@ public class Assembler {
             dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
             float dbDnRatioThresh = 1.5f;
+            int coverageConfThresh = 1000;
             UncertainRegionAssembler uncertainRegionAssembler = new UncertainRegionAssembler();
             uncertainRegionAssembler.assembleUncertainRegions(templateHookedList,
-                                                listOfScanPSMMap, scanDnMap, dbDnRatioThresh);
+                    listOfScanPSMMap, scanDnMap, coverageConfThresh);
+                                               // listOfScanPSMMap, scanDnMap, dbDnRatioThresh);
         }
 
         System.out.println("Print Coverage Confidence score along template. ");
@@ -119,9 +121,9 @@ public class Assembler {
 
     private void printCoverageConfsAlongTemplates(List<TemplateHooked> templateHookedList) {
         CoverageConfEvaluator confEvaluator = new CoverageConfEvaluator();
-        int sumScore = 0;
-        for (TemplateHooked templateHooked : templateHookedList) {
-            int[] coverageConfs = confEvaluator.evaluateCoverageConf(templateHooked);
+            int sumScore = 0;
+            for (TemplateHooked templateHooked : templateHookedList) {
+                int[] coverageConfs = confEvaluator.evaluateCoverageConf(templateHooked);
             System.out.println(templateHooked.getTemplateAccession());
             for (int conf : coverageConfs) {
                 System.out.print(conf + " ");

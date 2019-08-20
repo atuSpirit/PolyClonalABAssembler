@@ -25,7 +25,7 @@ public class IntactMassValidater {
 
     public static void main(String[] args) {
         String templateFasta = "C:\\hao\\database\\abysis.fasta";
-        templateFasta = "C:\\hao\\result\\NIST_Waters.1_SPIDER_81\\proteins.fasta";
+        templateFasta = "C:\\hao\\result\\NIST_Waters.1_SPIDER_147\\proteins.fasta";
         TemplatesLoader loader = new TemplatesLoader();
         List<Template> templateList = loader.loadTemplateFasta(templateFasta);
         for (Template template : templateList) {
