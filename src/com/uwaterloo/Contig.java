@@ -83,7 +83,25 @@ public class Contig {
 
     @Override
     public String toString() {
-        return tStart + " " + tEnd + " " + new String(AAs) + " " + score;
+        String strBuffer = tStart + " " + tEnd + " " + new String(AAs) + " " + score + ": ";
+        for (int conf : confs) {
+            strBuffer += String.valueOf(conf) + " ";
+        }
+        return strBuffer;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || o.getClass() != this.getClass()) {
+            return false;
+        }
+        Contig contig = (Contig) o;
+        return (contig.gettStart() == this.gettStart()) &&
+                (contig.gettEnd() == this.gettEnd()) &&
+                (contig.getScore() == this.getScore()) &&
+                (java.util.Arrays.equals(contig.getAAs(), this.getAAs()));
+    }
 }

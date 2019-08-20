@@ -1,5 +1,8 @@
 package com.uwaterloo;
 
+import com.uwaterloo.Tools.CoverageConfEvaluator;
+
+import java.net.CookieHandler;
 import java.util.*;
 
 public class UncertainRegionAssembler {
@@ -26,7 +29,7 @@ public class UncertainRegionAssembler {
         return dnAlignSet;
     }
 
-    //Extract the db covering at pos at templateHooked
+    //Extract the db covering at pos at templateHooked. Only db result will be used. Spider result is not used.
     private Set<PSMAligned> extractDbAtPos(TemplateHooked templateHooked, int pos,
                                            HashMap<String, PSMAligned> scanPSMMap) {
         Set<PSMAligned> dbSet = new HashSet<>();
@@ -70,6 +73,34 @@ public class UncertainRegionAssembler {
             }
         }
         return uncertainRegions;
+    }
+
+
+    /**
+     * Identify positions whose coverage confscore is less than coverageConf thresh to form a list of
+     * uncertain regions. Each region is one position.
+     * @param templateHooked Template with scanlist, dnToLeftList, dnToRightList
+     * @param scanPSMMap <scan, PSMAlign> hashMap
+     * @param coverageConfThresh The threshold of coverage.
+     * @return
+     */
+    private List<UncertainRegion> identifyUncertainRegionsByCoverage(TemplateHooked templateHooked,
+                                                                     HashMap<String, PSMAligned> scanPSMMap,
+                                                                        int coverageConfThresh) {
+        CoverageConfEvaluator confEvaluator = new CoverageConfEvaluator();
+        int[] coverageConfs = confEvaluator.evaluateCoverageConf(templateHooked);
+        int templateLength = templateHooked.getSeq().length;
+        List<UncertainRegion> uncertainRegions = new ArrayList<>();
+        for (int pos = 0; pos < templateLength; pos++) {
+            if (coverageConfs[pos] < coverageConfThresh) {
+                Set<DenovoAligned> dnToRightSet = extractDnToRightAtPos(templateHooked, pos);
+                Set<DenovoAligned> dnToLeftSet = extractDnToLeftAtPos(templateHooked, pos);
+                Set<PSMAligned> dbSet = extractDbAtPos(templateHooked, pos, scanPSMMap);
+                uncertainRegions.add(new UncertainRegion(pos, pos, dnToRightSet, dnToLeftSet, dbSet));
+            }
+        }
+        return uncertainRegions;
+
     }
 
     /**
@@ -147,7 +178,7 @@ public class UncertainRegionAssembler {
             }
             System.out.println();
         }
-*/
+/**/
 
         //Assemble the dnToRight into contigs, keep only the one with highest score
         List<Contig> toRightContigs = assembleDnToRightAlign(dnAlignToRightList, scanDnMap);
@@ -157,10 +188,8 @@ public class UncertainRegionAssembler {
             /*
             for (Contig contig : toRightContigs) {
                 System.out.println(contig.toString());
-            }*/
-            //Print only the contig with best score
-            //System.out.println(toRightContigs.get(0).toString());
-            //assembledContigs.add(toRightContigs.get(0));
+            }
+            /**/
 
             //Pick the contig with best score for non overlap regions.
             topToRightContigs = pickTopContigs(toRightContigs);
@@ -192,17 +221,15 @@ public class UncertainRegionAssembler {
             for (Contig contig : toLeftContigs) {
                 System.out.println(contig.toString());
             }
-            */
+            /**/
             //Pick the contig with best score for non overlap regions.
             topToLeftContigs = pickTopContigs(toLeftContigs);
             for (Contig topContig : topToLeftContigs) {
                 System.out.println(topContig.toString());
                 assembledContigs.add(topContig);
             }
-            //System.out.println(toLeftContigs.get(0).toString());
-            //assembledContigs.add(toLeftContigs.get(0));
         }
-
+/*
         //If toRightContig and toLeftContig contains overlap, merge them to a new contig
         if (toRightContigs != null && toLeftContigs != null) {
             List<Contig> bridgeContigs = findLeftRightOverlap(topToRightContigs, topToLeftContigs);
@@ -213,16 +240,17 @@ public class UncertainRegionAssembler {
                     System.out.println(contig.toString());
                 }
                 */
+/*
                 List<Contig> topContigs = pickTopContigs(bridgeContigs);
                 for (Contig topContig : topContigs) {
                     System.out.println(topContig.toString());
                     //Todo need to add the overlapped contigs in
- //                   assembledContigs.add(topContig);
+                    assembledContigs.add(topContig);
                 }
             }
         }
 
-
+*/
         /*
         for (PSMAligned psm : psmAlignedList) {
             System.out.print(psm.getStart() + " " + new String(psm.getAAs()));
@@ -243,7 +271,7 @@ public class UncertainRegionAssembler {
             int regionStart = regionToAssemble.getStartPos();
             int regionEnd = regionToAssemble.getEndPos();
             List<Contig> psmContigs = assembleConfidentPSM(psmAlignedList, regionStart, regionEnd);
-            if (psmContigs.size() > 0) {
+            if ((psmContigs != null) && (psmContigs.size() > 0)) {
                 System.out.println("db");
                 printContigs(psmContigs);
 
@@ -258,7 +286,7 @@ public class UncertainRegionAssembler {
     /**
      * Pick the contigs with highest score for each non-overlapped region.
      * For example, 45-90 one contig with highest score in this region, 102-140 anothr contig with highest score
-     * @param contigs  contigs sorted by their scores.
+     * @param contigs  contigs sorted by their scores descending.
      * @return
      */
     List<Contig> pickTopContigs(List<Contig> contigs) {
@@ -288,8 +316,8 @@ public class UncertainRegionAssembler {
      * @return
      */
     boolean overlap(Contig contig1, Contig contig2) {
-        return ((contig1.gettStart() >= contig2.gettStart()) && (contig1.gettStart() <= contig2.gettEnd())) ||
-                ((contig1.gettEnd() >= contig2.gettStart()) && (contig1.gettEnd() <= contig2.gettEnd()));
+        return !(((contig1.gettStart() >= contig2.gettStart()) && (contig1.gettStart() >= contig2.gettEnd())) ||
+                ((contig2.gettStart() >= contig1.gettStart()) && (contig2.gettStart() >= contig1.gettEnd())));
     }
 
     private int[] copyConfs(short[] AAConfs) {
@@ -300,60 +328,88 @@ public class UncertainRegionAssembler {
         return confs;
     }
 
+    /**
+     * Assemble confident psms into one contig
+     * @param psmAlignedList PSM are sorted by psm.tStart ascending, then score descending
+     * @param regionStart
+     * @param regionEnd
+     * @return
+     */
     private List<Contig> assembleConfidentPSM(List<PSMAligned> psmAlignedList, int regionStart, int regionEnd) {
+        if (psmAlignedList.size() == 0) return null;
+
         List<Contig> psmContigs = new ArrayList<>();
-        int tStart = 5000;
-        int tEnd = 0;
-        char[] AAs = null;
-        int[] confs = null;
+
+        int firstIndex = 0;
+        PSMAligned firstPsm = psmAlignedList.get(0);
+        while (!isConfidentPSM(firstPsm) && firstIndex < (psmAlignedList.size() - 1)) {
+            firstIndex += 1;
+            firstPsm = psmAlignedList.get(firstIndex);
+        }
+        int tStart = firstPsm.getStart();
+        int tEnd = firstPsm.getEnd();
+        char[] AAs = firstPsm.getAAs();
+        int[] confs = copyConfs(firstPsm.getIonScores());
         int scoreSum = 0;
-        int seqLen = 0;
+        int seqLen = AAs.length;
 
-        //psmAlignedList is sorted by psm.tStart
-        for (PSMAligned psm : psmAlignedList) {
+        int psmListSize = psmAlignedList.size();
+        for (int index = firstIndex + 1; index < psmListSize; index++) {
+            PSMAligned psm = psmAlignedList.get(index);
             //Discard inconfident PSMs.
-            if (isConfidentPSM(psm)) {
+            if (!isConfidentPSM(psm)) continue;
+
+            //If the psmAlign is not overlapped with the previous contig, store the previous contig. Start a new contig
+            if (psm.getStart() > tEnd) {
+                //Store the previous contigs in psmContigs
+                for (int conf : confs) {
+                    scoreSum += conf;
+                }
+                psmContigs.add(new Contig(tStart, tEnd, AAs, confs, scoreSum));
+
+                //Start a new contig with current psm
+                AAs = psm.getAAs();
                 confs = copyConfs(psm.getIonScores());
-                if (psm.getStart() < tStart) {
-                    tStart = psm.getStart();
-                }
-                //If the psmAlign is not overlapped with the previous contig, create a contig
-                if ((psm.getStart() > tStart) && (psm.getStart() > tEnd)) {
-                    psmContigs.add(new Contig(tStart, tEnd, AAs, confs, scoreSum));
-                    AAs = psm.getAAs();
-                    tStart = psm.getStart();
-                    tEnd = psm.getEnd();
-                    scoreSum = 0;
-                    for (short ionScore : psm.getIonScores()) {
-                        scoreSum += ionScore;
-                    }
-                    seqLen = AAs.length;
-                    continue;
-                }
+                tStart = psm.getStart();
+                tEnd = psm.getEnd();
+                scoreSum = 0;
+                seqLen = AAs.length;
+            } else {
+                //psm overlapped with current contig
                 if (psm.getEnd() > tEnd) {
-                    tEnd = psm.getEnd();
-                    seqLen = tEnd - tStart + 1;
+                    //psm is not nested in the contig, extend contig AA and update confs
+                    seqLen = psm.getEnd() - tStart + 1; // new contig length
 
-                    if (AAs == null) {
-                        AAs = psm.getAAs();
-                    } else {
-                        char[] newAAs = new char[seqLen];
-                        for (int i = tStart; i < psm.getStart(); i++) {
-                            newAAs[i - tStart] = AAs[i - tStart];
-                        }
-                        for (int i = psm.getStart(); i <= tEnd; i++) {
-                            newAAs[i -tStart] = psm.getAAs()[i - psm.getStart()];
-                        }
-                        AAs = newAAs;
+                    char[] newAAs = new char[seqLen];
+                    int[] newConfs = new int[seqLen];
+                    for (int i = tStart; i < psm.getStart(); i++) {
+                        newAAs[i - tStart] = AAs[i - tStart];
                     }
-                }
+                    for (int i = tStart; i < tEnd; i++) {
+                        newConfs[i - tStart] = confs[i - tStart];
+                    }
+                    for (int i = psm.getStart(); i <= psm.getEnd(); i++) {
+                        newAAs[i -tStart] = psm.getAAs()[i - psm.getStart()];
+                        newConfs[i - tStart] += psm.getIonScores()[i - psm.getStart()];
+                    }
 
-                for (short ionScore : psm.getIonScores()) {
-                    scoreSum += ionScore;
+                    AAs = newAAs;
+                    confs = newConfs;
+                    tEnd = psm.getEnd();
+                } else {
+                    //For nested psms, update only the confs
+                    for (int i = psm.getStart(); i < psm.getEnd(); i++) {
+                        confs[i - tStart] += psm.getIonScores()[i - psm.getStart()];
+                    }
                 }
             }
+
+
         }
         if (seqLen > 0) {
+            for (int conf : confs) {
+                scoreSum += conf;
+            }
             psmContigs.add(new Contig(tStart, tEnd, AAs, confs, scoreSum));
         }
         return psmContigs;
@@ -393,11 +449,13 @@ public class UncertainRegionAssembler {
                     int[] confs = new int[overlapIndex + 1 + seq2.length];
                     for (int i = 0; i < overlapIndex; i++) {
                         mergedAA[i] = seq1[i];
+                    }
+                    for (int i = 0; i < seq1.length; i++) {
                         confs[i] = toRightContig.getConfs()[i];
                     }
                     for (int i = 0; i < seq2.length; i++) {
                         mergedAA[i + overlapIndex] = seq2[i];
-                        confs[i + overlapIndex] += seq2[i];
+                        confs[i + overlapIndex] += toLeftContig.getConfs()[i];
                     }
 
                     /* Create the merged contigs to have the score of the summation of the two contigs.
@@ -442,13 +500,13 @@ public class UncertainRegionAssembler {
      * @param seq2
      * @return
      */
-    private int findOverlapIndex(char[] seq1, char[] seq2) {
+    public int findOverlapIndex(char[] seq1, char[] seq2) {
         int i = 0;
         int j = 0;
         int start = -1;
 
         while (true) {
-            while ((i < seq1.length) && (seq1[i] != seq2[0])) {
+            while ((i < seq1.length) && !charEqual(seq1[i], seq2[0])) {
                 i++;
             }
             if (i == seq1.length) {
@@ -456,7 +514,7 @@ public class UncertainRegionAssembler {
             }
 
             start = i;
-            while ((i < seq1.length) && (j < seq2.length) && (seq1[i] == seq2[j])) {
+            while ((i < seq1.length) && (j < seq2.length) && charEqual(seq1[i], seq2[j])) {
                 i++;
                 j++;
             }
@@ -469,7 +527,26 @@ public class UncertainRegionAssembler {
         }
     }
 
+    private boolean charEqual(char c1, char c2) {
+        if (c1 == c2) {
+            return true;
+        }
+        if (((c1 == 'I') && (c2 == 'L'))
+                || ((c1 == 'L') && (c2 == 'I'))
+                || ((c1 == 'N') && (c2 == 'D'))
+                || ((c1 == 'D') && (c2 == 'N'))) {
+            return true;
+        }
+        return false;
+    }
 
+    int sumConfScores(int[] confs) {
+        int sum = 0;
+        for (int conf : confs) {
+            sum += conf;
+        }
+        return sum;
+    }
     /**
      * Assemble dnToRightAlign set into several contigs. If overlapped, merge into one contig.
      * @param dnAlignToRightList The list of dnAlign sorted by tStart ascending,
@@ -484,16 +561,18 @@ public class UncertainRegionAssembler {
         }
         List<Contig> contigs = new ArrayList<>();
         DenovoAligned firstDnAlign = dnAlignToRightList.get(0);
+        int[] dnConfs = copyConfs(scanDnMap.get(firstDnAlign.getDnScan()).getConfScores());
         Contig firstContig = new Contig(firstDnAlign.gettStart(), -1,
                 scanDnMap.get(firstDnAlign.getDnScan()).getAAs(),
-                copyConfs(scanDnMap.get(firstDnAlign.getDnScan()).getConfScores()),
-                firstDnAlign.getScore());
+                dnConfs,
+                sumConfScores(dnConfs));
         contigs.add(firstContig);
         //System.out.println("Debug " + firstContig.toString());
 
         for (int i = 1; i < dnAlignToRightList.size(); i++) {
             DenovoAligned dnAligned = dnAlignToRightList.get(i);
             char[] dnAAs = scanDnMap.get(dnAligned.getDnScan()).getAAs();
+            dnConfs = copyConfs(scanDnMap.get(dnAligned.getDnScan()).getConfScores());
             int dnTStart = dnAligned.gettStart();
             int overlappedContigIndex = findContigRightOverlap(contigs, dnAAs, dnTStart);
 
@@ -504,19 +583,40 @@ public class UncertainRegionAssembler {
                 int startIndex = dnTStart - contig.gettStart();
 
                 //If overlapped, add up their score
-                contig.setScore(contig.getScore() + dnAligned.getScore());
+                contig.setScore(contig.getScore() + sumConfScores(dnConfs));
 
                 //Extend the AAs to right if there are more AAs
                 int endIndex = dnAAs.length - (contigAAs.length - startIndex);
                 if (endIndex > 0) {
                     char[] mergedAAs = new char[contigAAs.length + endIndex];
+                    int[] mergedConfs = new int[contigAAs.length + endIndex];
+
+                    //Update the merged AAs
                     for (int j = 0; j < startIndex; j++) {
                         mergedAAs[j] = contigAAs[j];
                     }
+
                     for (int j = 0; j < dnAAs.length; j++) {
                         mergedAAs[j + startIndex] = dnAAs[j];
                     }
                     contig.setAAs(mergedAAs);
+
+                    /* Update the merged confs. The new confs of merged contigs
+                        is the summation of confs of two overlapped contigs on
+                        each position.
+                     */
+                    for (int j = 0; j < contigAAs.length; j++) {
+                        mergedConfs[j] = contig.getConfs()[j];
+                    }
+                    for (int  j = 0; j < dnAAs.length; j++) {
+                        mergedConfs[j + startIndex] += dnConfs[j];
+                    }
+                    contig.setConfs(mergedConfs);
+                } else {
+                    //If the dnAA is nested in contig, only update the confs
+                    for (int j = 0; j < dnAAs.length; j++) {
+                        contig.getConfs()[j + startIndex] += dnConfs[j];
+                    }
                 }
                 //System.out.println("Debug Extended contig ");
                 //System.out.println(contig.toString());
@@ -524,8 +624,8 @@ public class UncertainRegionAssembler {
                 //If not overlapped, add the dnAligned as a new contig
                 Contig newContig = new Contig(dnAligned.gettStart(), -1,
                         scanDnMap.get(dnAligned.getDnScan()).getAAs(),
-                        copyConfs(scanDnMap.get(dnAligned.getDnScan()).getConfScores()),
-                        dnAligned.getScore());
+                        dnConfs,
+                        sumConfScores(dnConfs));
                 //System.out.println("Debug new contig: " );
                 //System.out.println(newContig.toString());
                 contigs.add(newContig);
@@ -564,7 +664,7 @@ public class UncertainRegionAssembler {
             int endIndex = ((contigAAs.length - startIndex) > dnAAs.length) ? (startIndex + dnAAs.length) : contigAAs.length;
 
             for (int j = startIndex; j < endIndex; j++) {
-                if (contigAAs[j] != dnAAs[j - startIndex]) {
+                if (!charEqual(contigAAs[j], dnAAs[j - startIndex])) {
                     isOverlapped = false;
                     break;
                 }
@@ -591,15 +691,17 @@ public class UncertainRegionAssembler {
         }
         List<Contig> contigs = new ArrayList<>();
         DenovoAligned firstDnAlign = dnAlignToLeftList.get(0);
+        int[] dnConfs = copyConfs(scanDnMap.get(firstDnAlign.getDnScan()).getConfScores());
         Contig firstContig = new Contig(-1, firstDnAlign.gettEnd(),
                 scanDnMap.get(firstDnAlign.getDnScan()).getAAs(),
-                copyConfs(scanDnMap.get(firstDnAlign.getDnScan()).getConfScores()),
-                firstDnAlign.getScore());
+                dnConfs,
+                sumConfScores(dnConfs));
         contigs.add(firstContig);
 
         for (int i = 1; i < dnAlignToLeftList.size(); i++) {
             DenovoAligned dnAligned = dnAlignToLeftList.get(i);
             char[] dnAAs = scanDnMap.get(dnAligned.getDnScan()).getAAs();
+            dnConfs = copyConfs(scanDnMap.get(dnAligned.getDnScan()).getConfScores());
             int dnTEnd = dnAligned.gettEnd();
 
             int overlappedContigIndex = findContigLeftOverlap(contigs, dnAAs, dnTEnd);
@@ -612,15 +714,18 @@ public class UncertainRegionAssembler {
                 int startIndex = contig.gettEnd() - dnTEnd;
 
                 //If overlapped, add up their score
-                contig.setScore(contig.getScore() + dnAligned.getScore());
+                contig.setScore(contig.getScore() + sumConfScores(dnConfs));
 
                 //System.out.println("Debug " + contig.toString());
 
-                //Extend the AAs to right if there are more AAs
+                //Extend the AAs to left if there are more AAs
                 int endIndex = dnAAs.length - (contigAAs.length - startIndex);
                 if (endIndex > 0) {
                     int newLength = contigAAs.length + endIndex;
                     char[] mergedAAs = new char[newLength];
+                    int[] mergedConfs = new int[newLength];
+
+                    //Update the merged AAs
                     for (int j = 0; j < startIndex; j++) {
                         mergedAAs[newLength - 1 - j] = contigAAs[contigAAs.length - 1 - j];
                     }
@@ -628,13 +733,27 @@ public class UncertainRegionAssembler {
                         mergedAAs[newLength - 1 - j - startIndex] = dnAAs[dnAAs.length - 1 - j];
                     }
                     contig.setAAs(mergedAAs);
+
+                    //Update the merged confs in each position
+                    for (int j = 0; j < contigAAs.length; j++) {
+                        mergedConfs[j] = contig.getConfs()[j];
+                    }
+                    for (int j = 0; j < dnAAs.length; j++) {
+                        mergedConfs[newLength - 1 - j - startIndex] += dnConfs[dnAAs.length - 1 - j];
+                    }
+                    contig.setConfs(mergedConfs);
+                } else {
+                    //If the dnAA is nested in ContigAA
+                    for (int j = 0; j < dnAAs.length; j++) {
+                        contig.getConfs()[startIndex + j] += dnConfs[j];
+                    }
                 }
             } else {
                 //If not overlapped, add the dnAligned as a new contig
                 Contig newContig = new Contig(-1, dnAligned.gettEnd(),
                         scanDnMap.get(dnAligned.getDnScan()).getAAs(),
-                        copyConfs(scanDnMap.get(firstDnAlign.getDnScan()).getConfScores()),
-                        dnAligned.getScore());
+                        dnConfs,
+                        sumConfScores(dnConfs));
                 contigs.add(newContig);
             }
         }
@@ -672,7 +791,7 @@ public class UncertainRegionAssembler {
             }
 
             for (int j = startIndex; j < endIndex; j++) {
-                if (contigAAs[contigAAs.length - 1 - j] != dnAAs[dnAAs.length - 1 - (j - startIndex)]) {
+                if (!charEqual(contigAAs[contigAAs.length - 1 - j], dnAAs[dnAAs.length - 1 - (j - startIndex)])) {
                     isOverlapped = false;
                     break;
                 }
@@ -695,7 +814,7 @@ public class UncertainRegionAssembler {
      * @param templateHooked
      * @param assembledContigs
      */
-    private void generateCandidateTemplate(TemplateHooked templateHooked, List<Contig> assembledContigs) {
+    private void old_generateCandidateTemplate(TemplateHooked templateHooked, List<Contig> assembledContigs) {
         System.out.println("Debug:" + templateHooked.getTemplateAccession());
 
         //TODO don't need merge.
@@ -729,12 +848,8 @@ public class UncertainRegionAssembler {
      * @param templateHooked
      * @param assembledContigs
      */
-    private void new_generateCandidateTemplate(TemplateHooked templateHooked, List<Contig> assembledContigs) {
+    private void generateCandidateTemplate(TemplateHooked templateHooked, List<Contig> assembledContigs) {
         System.out.println("Debug:" + templateHooked.getTemplateAccession());
-
-        //TODO don't need merge.
-        //List<Contig> mergedContigs = mergeContigs(assembledContigs);
-        //Collections.sort(mergedContigs, Contig.cmpScore());
 
         Collections.sort(assembledContigs, Contig.cmpTStart());
         List<Character> newTemplate = new ArrayList<>();
@@ -742,7 +857,6 @@ public class UncertainRegionAssembler {
         char[] AAs = templateHooked.getSeq().clone();
         int start = 0;
 
-        //for (Contig contig : mergedContigs) {
         for (Contig contig : assembledContigs) {
             int tStart = contig.gettStart() < 0 ? 0 : contig.gettStart();
             int tEnd = contig.gettEnd();
@@ -770,9 +884,149 @@ public class UncertainRegionAssembler {
     }
 
 
+    /**
+     * Merge adjacent overlapped contigs
+     * @param assembledContigs The assembledContigs are sorted by descending score.
+     * @param posDiffTolerance The gap size
+     * @param minOverlap The minimal overlapped size required.
+     * @return The extended contigs.  There might be contigs with same sequence, but
+     *          different scores or same scores. The contig with higher score is added
+     *          when extended with another nested contig.  The contig with lower score
+     *          is not removed for the convenience of the code.  The contig with same score
+     *          is the same one which is added also because of the convenience of the score.
+     *          Those contigs with AA conflict but lower score are also kept.
+     *          Be sure to run pickTopContigs process after this process to get correct sets of
+     *          contigs.
+     */
+    private List<Contig> mergeContigs(List<Contig> assembledContigs,
+                                      int posDiffTolerance, int minOverlap) {
+        List<Contig> mergedContigList = new ArrayList<>();
+        //Collections.sort(assembledContigs, Contig.cmpReverseScore());
+        Queue<Contig> contigQueue = new LinkedList<Contig>();
+        contigQueue.addAll(assembledContigs);
+
+        Contig contig = contigQueue.poll();
+        mergedContigList.add(contig);
+        while (null != (contig = contigQueue.poll())) {
+            /* If there is position overlap between contig and any mergedContig,
+                the contig should be tested whether it can be an extension of mergedContig.
+                If it is an extension, extend it.  If not, it will be added to mergedContigList.
+                Later, a process of pick topScore will filter out those overlapped with current
+                mergedContigs.
+             */
+            Contig extendContig = null;
+            int listLength = mergedContigList.size();
+            for (int j = 0; j < listLength; j++) {
+                Contig mergedContig = mergedContigList.get(j);
+                if (contig.equals(mergedContig)) {
+                    /* Set extendContig to be non null, if there is no extension,
+                    it will not be added to contigQueue again.
+                     */
+
+                    extendContig = contig;
+                    continue;
+                }
+                if ((contig.gettStart() > mergedContig.gettStart()) &&
+                        (contig.gettStart() < (mergedContig.gettEnd() + posDiffTolerance))) {
+                    //mergedContig is left to contig
+                    extendContig = extendContig(mergedContig, contig, minOverlap);
+                    if (extendContig != null) {
+                        mergedContigList.set(j, extendContig);
+                        /* Add the new extended Contig to contigQueue if the extendContig
+                         is an extension other than a nest of leftContig, because the new
+                            extended contig might overlap with following unchecked contigs.
+                         */
+                        if (extendContig.getAAs().length > mergedContig.getAAs().length) {
+                            contigQueue.add(extendContig);
+                        }
+
+                        break;
+                    }
+                }
+                if ((mergedContig.gettStart() > contig.gettStart()) &&
+                        (mergedContig.gettStart() < (contig.gettEnd() + posDiffTolerance))) {
+                    //mergedContig is right to contig
+                    extendContig = extendContig(contig, mergedContig, minOverlap);
+                    if (extendContig != null) {
+                        mergedContigList.set(j, extendContig);
+                        /* Add the new extended Contig to contigQueue if the extendContig
+                         is an extension other than a nest of leftContig, because the new
+                            extended contig might overlap with other contigs.
+                         */
+                        if (extendContig.getAAs().length > contig.getAAs().length) {
+                            contigQueue.add(extendContig);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (extendContig == null) {
+                mergedContigList.add(contig);
+            }
+        }
+        return mergedContigList;
+
+    }
+
+
+    /**
+     * Check whether contig is a right-direction extension of leftContig.
+     * If yes, extend the leftContig to right and return the merged contigs.
+     * The new contig will have the start of leftContig and the end of contig.
+     * So there could generate deletion or insertion in the returned contig
+     * @param leftContig  The contig in the mergedContig List
+     * @param contig a new contig which is right to the mergedContig
+     * @param minOverlapLen the minimal overlap AA numbers required to be viewed
+     *                      as an extension
+     * @return  null if no overlap or an extended contig
+     */
+    private Contig extendContig(Contig leftContig, Contig contig, int minOverlapLen) {
+        Contig mergedContig = null;
+        char[] seq1 = leftContig.getAAs();
+        char[] seq2 = contig.getAAs();
+        int overlapIndex = findOverlapIndex(seq1, seq2);
+        /* If seq2 is nested in seq1. Update the confs of LeftContig,
+            but don't create a new mergedContig, so return null mergedContig
+         */
+        if ((overlapIndex + seq2.length) < seq1.length) {
+            for (int i = 0; i < seq2.length; i++) {
+                leftContig.getConfs()[overlapIndex + i] = contig.getConfs()[i];
+            }
+            return leftContig;
+        }
+
+        //If leftContig and contig overlapped by a length larger than minOverlapLen
+        if (overlapIndex < seq1.length && (seq1.length - overlapIndex) >= minOverlapLen) {
+            char[] mergedAA = new char[overlapIndex + seq2.length];
+            int[] confs = new int[overlapIndex + seq2.length];
+            for (int i = 0; i < overlapIndex; i++) {
+                mergedAA[i] = seq1[i];
+            }
+
+            for (int i = 0; i < seq1.length; i++) {
+                confs[i] += leftContig.getConfs()[i];
+            }
+
+            for (int i = 0; i < seq2.length; i++) {
+                mergedAA[i + overlapIndex] = seq2[i];
+                confs[i + overlapIndex] += contig.getConfs()[i];
+            }
+
+            /* Create the merged contigs to have the score of the summation of the two contigs.
+               Although the mergedContigs might have insertion or deletion, in which case the
+               length of merged contig does not equal to the summation of the two lengths, still
+               use the start and end of the two merged contigs for later convenience to chain this
+               assembled contigs to correct positions on the template sequence.
+             */
+            mergedContig = new Contig(leftContig.gettStart(), contig.gettEnd(),
+                    mergedAA, confs, (leftContig.getScore() + contig.getScore()));
+        }
+        return mergedContig;
+    }
 
     /* Merge overlapped contigs, choose the AAs with higher score as consensus.  there is bug in this function */
-    private List<Contig> mergeContigs(List<Contig> assembledContigs) {
+    private List<Contig> old_mergeContigs(List<Contig> assembledContigs) {
         Collections.sort(assembledContigs, Contig.cmpTStart());
         List<Contig> mergedContigs = new ArrayList<>();
         mergedContigs.add(assembledContigs.get(0));
@@ -828,6 +1082,16 @@ public class UncertainRegionAssembler {
         }
     }
 
+    private List<Contig> filterContigs(List<Contig> contigs, int scoreThresh) {
+        ArrayList<Contig> filteredContigs = new ArrayList<>();
+        for (Contig contig : contigs) {
+            if (contig.getScore() > scoreThresh * (contig.getAAs().length)) {
+                filteredContigs.add(contig);
+            }
+        }
+        return filteredContigs;
+    }
+
     private Set<DenovoAligned> mergeDuplicateDn(Set<DenovoAligned> dnAlignSet, HashMap<String, DenovoOnly> scanDnMap) {
         Set<DenovoAligned> mergedDnAlignedSet = new HashSet<>();
         Map<String, DenovoAligned> AADnMap = new HashMap<>();
@@ -851,14 +1115,16 @@ public class UncertainRegionAssembler {
     public void assembleUncertainRegions(List<TemplateHooked> templateHookedList,
                                          List<HashMap<String, PSMAligned>> listOfscanPSMMap,
                                          HashMap<String, DenovoOnly> scanDnMap,
-                                         float dbDnRatioThresh) {
+                                         //float dbDnRatioThresh) {
+                                         int coverageConfThresh) {
         int adjacentThresh = 10;
         for (int i = 0; i < templateHookedList.size(); i++) {
             TemplateHooked templateHooked = templateHookedList.get(i);
             System.out.println("assemble uncertain region for " + templateHooked.getTemplateAccession());
             HashMap<String, PSMAligned> scanPSMMap = listOfscanPSMMap.get(i);
             //Find uncertain regions where db / dn ratio less than dbDnRatioThresh
-            List<UncertainRegion> uncertainRegionList = identifyUncertainRegions(templateHooked, scanPSMMap, dbDnRatioThresh);
+           // List<UncertainRegion> uncertainRegionList = identifyUncertainRegions(templateHooked, scanPSMMap, dbDnRatioThresh);
+            List<UncertainRegion> uncertainRegionList =  identifyUncertainRegionsByCoverage(templateHooked, scanPSMMap, coverageConfThresh);
             if (uncertainRegionList.size() == 0) {
                 continue;
             }
@@ -874,23 +1140,44 @@ public class UncertainRegionAssembler {
                 assembledContigs.addAll(assembleOneRegion(regionToAssemble, scanDnMap));
             }
 
+            /* Filter the assembled contigs according to the average score threshold
+                for each AA.  A contig will be kept if its total score is greater than
+                scoreThresh * length(contig).  If not, the contig is viewed as inconfident
+                contig, which will be discarded.
+             */
+            System.out.println("Assembled contigs");
+            printContigs(assembledContigs);
+            int scoreThresh = 70;
+            System.out.println("Filtering assembled contigs whose average conf score of AA is less than " + scoreThresh);
+            List<Contig> filteredContigs = filterContigs(assembledContigs, scoreThresh);
+            if (filteredContigs.size() == 0) continue;
+            Collections.sort(filteredContigs, Contig.cmpReverseScore());
+            printContigs(filteredContigs);
+
+            System.out.println("Extending assembled contigs according to overlap.");
+            int posDiffTolerance = 10;
+            int minOverlap = 3;
+            List<Contig> mergedContigs = mergeContigs(filteredContigs, posDiffTolerance,
+                                                        minOverlap);
+            printContigs(mergedContigs);
+            /* correct way currently
+            System.out.println("Assembled contigs");
+            generateCandidateTemplate(templateHooked, assembledContigs);
+*/
+
             /*  There is some problem with assemble only contigs with top score because there are some other part not applied.
                 Need to be considered again, how to chain confident AA or kmer other than segment.
              */
-            /*
+
             System.out.println("Assembled contigs with top score");
-            Collections.sort(assembledContigs, Contig.cmpReverseScore());
-            List<Contig> topAssembledContigs = pickTopContigs(assembledContigs);
+            Collections.sort(mergedContigs, Contig.cmpReverseScore());
+            List<Contig> topAssembledContigs = pickTopContigs(mergedContigs);
             for (Contig assembledContig : topAssembledContigs) {
                 System.out.println(assembledContig.toString());
             }
+
             //Select contigs with max score and apply to the template to generate candidate template.
             generateCandidateTemplate(templateHooked, topAssembledContigs);
-
-            */
-
-            System.out.println("Assembled contigs");
-            generateCandidateTemplate(templateHooked, assembledContigs);
 
         }
 

@@ -828,7 +828,7 @@ public class TemplateCandidateBuilder {
 
         boolean polyClonal = true;
         //For Polyclonal, each template might diverge into three.
-        boolean homo = false;
+        boolean homo = true;
         boolean graphAssembly = true;
         boolean useTopScoreNotIntensity = false;    //true use score, false use intensity
 
@@ -846,8 +846,6 @@ public class TemplateCandidateBuilder {
 
             candidateTemplates.add(candidateTemplate1);
         } else {
-
-
             if (homo) {
                 //Apply homogeneous mutations to template to generate one candidate template
                 List<MutationsPattern> homogeneousMutations = getHomogeneousMutations(significantAAsPerPos, templatePattern.getAAs());
