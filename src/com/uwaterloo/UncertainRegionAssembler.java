@@ -168,7 +168,7 @@ public class UncertainRegionAssembler {
 
         List<Contig> assembledContigs = new ArrayList<>();
 
-/*
+//*
         System.out.println("dn to right");
         for (DenovoAligned dnAligned : dnAlignToRightList) {
             System.out.print(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
@@ -199,7 +199,7 @@ public class UncertainRegionAssembler {
             }
         }
 
-/*
+//*
         System.out.println("dn to left");
         for (DenovoAligned dnAligned : dnAlignToLeftList) {
             System.out.print(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
