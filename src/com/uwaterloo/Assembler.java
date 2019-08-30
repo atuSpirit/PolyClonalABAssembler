@@ -32,7 +32,7 @@ public class Assembler {
         dir = "C:\\Hao\\result\\Water_mAB.clean_SPIDER_14\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_38\\";
-        dir = "C:\\hao\\result\\NIST_Waters.2_SPIDER_65\\";
+        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_189\\";
         dir = "C:\\hao\\result\\NIST_Waters.1_PEAKS_181\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
@@ -48,9 +48,17 @@ public class Assembler {
         DenovoOnlyReader dnReader = new DenovoOnlyReader();
         List<DenovoOnly> dnList = dnReader.readCSVFile(dnFile);
         System.out.println("Read in " + dnList.size() + " denovo only.");
+
+        //new way of truncated denovo only peptide to remain only high quality one
+        int confAAThresh = 50;
+        short kmerSize = 6;
+        dnList = dnReader.filterDnByConfScore(dnList, confAAThresh, kmerSize);
+
+        /*/Old way of filter low quality reads.
         int confScoreThresh = 20;
         int inConfidentAANumThresh = 2;
-        dnList = dnReader.filterDnByConfScore(dnList, confScoreThresh, inConfidentAANumThresh);
+        dnList = dnReader.old_filterDnByConfScore(dnList, confScoreThresh, inConfidentAANumThresh);
+        */
         System.out.println("filtered denovo size: " + dnList.size());
 
         String templateFasta = dir + "proteins.fasta";
@@ -87,7 +95,6 @@ public class Assembler {
             HashMap<String, DenovoOnly> scanDnMap = buildScanDnMap(dnList);
             //Map Denovo only peptides to templates
             TemplateDenovoAligner dnAligner = new TemplateDenovoAligner(dnList, scanDnMap);
-            short kmerSize = 6;
             dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
             float dbDnRatioThresh = 1.5f;

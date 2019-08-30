@@ -86,17 +86,21 @@ public class UncertainRegionAssembler {
      */
     private List<UncertainRegion> identifyUncertainRegionsByCoverage(TemplateHooked templateHooked,
                                                                      HashMap<String, PSMAligned> scanPSMMap,
-                                                                        int coverageConfThresh) {
+                                                                        int coverageConfThresh, int extendSize) {
         CoverageConfEvaluator confEvaluator = new CoverageConfEvaluator();
         int[] coverageConfs = confEvaluator.evaluateCoverageConf(templateHooked);
         int templateLength = templateHooked.getSeq().length;
         List<UncertainRegion> uncertainRegions = new ArrayList<>();
         for (int pos = 0; pos < templateLength; pos++) {
             if (coverageConfs[pos] < coverageConfThresh) {
-                Set<DenovoAligned> dnToRightSet = extractDnToRightAtPos(templateHooked, pos);
-                Set<DenovoAligned> dnToLeftSet = extractDnToLeftAtPos(templateHooked, pos);
-                Set<PSMAligned> dbSet = extractDbAtPos(templateHooked, pos, scanPSMMap);
-                uncertainRegions.add(new UncertainRegion(pos, pos, dnToRightSet, dnToLeftSet, dbSet));
+                int leftPos = (pos - extendSize) > 0 ? (pos - extendSize) : 0;
+                int rightPos = (pos + extendSize) < templateLength ? (pos + extendSize) : (templateLength - 1);
+                for (int i = leftPos; i <= rightPos; i++) {
+                    Set<DenovoAligned> dnToRightSet = extractDnToRightAtPos(templateHooked, i);
+                    Set<DenovoAligned> dnToLeftSet = extractDnToLeftAtPos(templateHooked, i);
+                    Set<PSMAligned> dbSet = extractDbAtPos(templateHooked, i, scanPSMMap);
+                    uncertainRegions.add(new UncertainRegion(i, i, dnToRightSet, dnToLeftSet, dbSet));
+                }
             }
         }
         return uncertainRegions;
@@ -1118,13 +1122,15 @@ public class UncertainRegionAssembler {
                                          //float dbDnRatioThresh) {
                                          int coverageConfThresh) {
         int adjacentThresh = 10;
+        int extendSize = 3; //Extend the uncertain region to both side to get more related reads in
         for (int i = 0; i < templateHookedList.size(); i++) {
             TemplateHooked templateHooked = templateHookedList.get(i);
             System.out.println("assemble uncertain region for " + templateHooked.getTemplateAccession());
             HashMap<String, PSMAligned> scanPSMMap = listOfscanPSMMap.get(i);
             //Find uncertain regions where db / dn ratio less than dbDnRatioThresh
            // List<UncertainRegion> uncertainRegionList = identifyUncertainRegions(templateHooked, scanPSMMap, dbDnRatioThresh);
-            List<UncertainRegion> uncertainRegionList =  identifyUncertainRegionsByCoverage(templateHooked, scanPSMMap, coverageConfThresh);
+            List<UncertainRegion> uncertainRegionList =  identifyUncertainRegionsByCoverage(templateHooked, scanPSMMap,
+                                                                coverageConfThresh, extendSize);
             if (uncertainRegionList.size() == 0) {
                 continue;
             }
