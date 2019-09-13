@@ -24,7 +24,7 @@ public class CandidateTemplateValidater {
         CandidateTemplateValidater candidateTemplateValidater = new CandidateTemplateValidater();
 
         String dir = "C:\\hao\\result\\ab19001.polyclonal.05.05_SPIDER_16\\";
-        dir = "C:\\Hao\\result\\NIST_Waters.2_SPIDER_35\\";
+        dir = "C:\\Hao\\result\\NIST_Waters.EThcd_SPIDER_84\\";
         String contaminantFile = "C:\\hao\\database\\contaminants.fasta";
         String candidateTemplateWithContaminant = "C:\\Hao\\database\\candidate_template_with_contaminant.fasta";
 

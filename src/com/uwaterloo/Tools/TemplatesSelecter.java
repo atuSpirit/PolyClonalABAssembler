@@ -247,15 +247,16 @@ public class TemplatesSelecter {
         dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_12\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_22\\";
         dir = "C:\\hao\\result\\NIST_Waters.clean_SPIDER_11\\";
-        dir = "C:\\hao\\result\\NIST_Waters.2_SPIDER_63\\";
+        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_84\\";
 
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
-        int topK = 2;
-        int scoreThresh = 1000;
+        int topK = 10;
+        int scoreThresh = 300;  //300 to select better initial templates
+
 
         //If selecting from all antibody database, set it less than 1. If choose from template candidate, set it to 1
-        float descreaseRatio = 0.0f;  //If selecting templates from antibody database, choose 0.1f.  If choose top template, use 0
+        float descreaseRatio = 0.1f;  //If selecting templates from antibody database, choose 0.1f.  If choose top template, use 0
 
         TemplatesSelecter templatesSelecter = new TemplatesSelecter(topK);
 

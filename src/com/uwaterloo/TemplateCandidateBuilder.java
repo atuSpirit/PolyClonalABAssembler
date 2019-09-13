@@ -1,5 +1,7 @@
 package com.uwaterloo;
 
+import Utils.CharEqual;
+
 import java.util.*;
 
 public class TemplateCandidateBuilder {
@@ -608,7 +610,8 @@ public class TemplateCandidateBuilder {
                         List<MutationsPattern> patternList = variationsPerPos.get(AApos);
                         boolean AAexist = false;
                         for (MutationsPattern AAPattern : patternList) {
-                            if (AAPattern.getAAs().equals(str)) {
+                            //if (AAPattern.getAAs().equals(str)) { Change it to the following to allow D/N and Q/E cases
+                            if (CharEqual.charEqual(AAPattern.getAAs().charAt(0), AA)) {
                                 AAPattern.setFreq(AAPattern.getFreq() + pattern.getFreq());
                                 AAPattern.setScore(AAPattern.getScore() + pattern.getScore() / pattern.getAAs().length());
                                 AAPattern.getIntensitySet().addAll(pattern.getIntensitySet());

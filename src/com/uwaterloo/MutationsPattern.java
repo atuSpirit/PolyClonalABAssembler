@@ -1,5 +1,6 @@
 package com.uwaterloo;
 
+import Utils.CharEqual;
 import org.junit.Test;
 import org.junit.Assert.*;
 
@@ -94,9 +95,20 @@ public class MutationsPattern {
 
     @Override
     public boolean equals(Object o) {
+        char[] AAs1 = this.getAAs().toCharArray();
+        char[] AAs2 = ((MutationsPattern) o).getAAs().toCharArray();
+        int length = AAs1.length;
+        for (int i = 0; i < length; i++) {
+            if (!CharEqual.charEqual(AAs1[i], AAs2[i])) {
+                return false;
+            }
+        }
+        /*
         if (!this.getAAs().equals(((MutationsPattern) o).getAAs())) {
             return false;
         }
+        */
+
         if (this.getPosList().equals(((MutationsPattern) o).getPosList())) {
             return true;
         }
@@ -107,8 +119,13 @@ public class MutationsPattern {
     @Override
     public int hashCode() {
         int result = 7;
+        String newAAs = new String(AAs);
+        newAAs.replaceAll("I", "L");
+        newAAs.replaceAll("N", "D");
+        newAAs.replaceAll("Q", "E");
+
         result = 31 * result + posList.toString().hashCode();
-        result = 31 * result + AAs.hashCode();
+        result = 31 * result + newAAs.hashCode();
         return result;
     }
 
