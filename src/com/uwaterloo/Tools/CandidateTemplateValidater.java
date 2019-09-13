@@ -24,7 +24,7 @@ public class CandidateTemplateValidater {
         CandidateTemplateValidater candidateTemplateValidater = new CandidateTemplateValidater();
 
         String dir = "C:\\hao\\result\\ab19001.polyclonal.05.05_SPIDER_16\\";
-        dir = "C:\\Hao\\result\\NIST_Waters.1_SPIDER_68\\";
+        dir = "C:\\Hao\\result\\NIST_Waters.EThcd_SPIDER_84\\";
         String contaminantFile = "C:\\hao\\database\\contaminants.fasta";
         String candidateTemplateWithContaminant = "C:\\Hao\\database\\candidate_template_with_contaminant.fasta";
 
@@ -52,7 +52,7 @@ public class CandidateTemplateValidater {
             MutationsPattern templatePattern = templatePatternList.get(i);
             HashMap<String, PSMAligned> scanPSMMap = listOfScanPSMMap.get(i);
             int scoreDiff = candidateTemplateValidater.validateTemplate(templateHooked, scanPSMMap, templatePattern);
-            if (scoreDiff > 0) {
+            if (scoreDiff >= 0) {
                 templateHooked.setTemplateAccession(templateHooked.getTemplateAccession() + "_scoreIncrease_" +  scoreDiff);
                 validatedTemplateHookedList.add(templateHooked);
             }

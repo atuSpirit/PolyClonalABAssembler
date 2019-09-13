@@ -32,7 +32,8 @@ public class Assembler {
         dir = "C:\\Hao\\result\\Water_mAB.clean_SPIDER_14\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_38\\";
-        dir = "C:\\hao\\result\\NIST_Waters.1_SPIDER_151\\";
+        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_87\\";
+        dir = "C:\\hao\\result\\NIST_Waters.EThcd_PEAKS_86\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -47,9 +48,18 @@ public class Assembler {
         DenovoOnlyReader dnReader = new DenovoOnlyReader();
         List<DenovoOnly> dnList = dnReader.readCSVFile(dnFile);
         System.out.println("Read in " + dnList.size() + " denovo only.");
+
+        /*/new way of truncated denovo only peptide to remain only high quality one
+        int confAAThresh = 50;
+        short kmerSize = 6;
+        dnList = dnReader.filterDnByConfScore(dnList, confAAThresh, kmerSize);
+*/
+        //Old way of filter low quality reads.
         int confScoreThresh = 20;
+        short kmerSize = 6;
         int inConfidentAANumThresh = 2;
-        dnList = dnReader.filterDnByConfScore(dnList, confScoreThresh, inConfidentAANumThresh);
+        dnList = dnReader.old_filterDnByConfScore(dnList, confScoreThresh, inConfidentAANumThresh);
+        /**/
         System.out.println("filtered denovo size: " + dnList.size());
 
         String templateFasta = dir + "proteins.fasta";
@@ -74,10 +84,10 @@ public class Assembler {
         }
 
         //The ratio threshold that a mutation could be viewed as significant
-        double significantThreshold = 0.3;  //Increase from 0.1 to 0.2 for Nuno data which is less accurate
+        double significantThreshold = 0.15;  //Increase from 0.1 to 0.2 for Nuno data which is less accurate
         int minFreq = 3;    //The threshold that a position will consider as a significant mutation type
 
-        boolean useDenovo = false;
+        boolean useDenovo = true;
         if (!useDenovo) {
             //Generating candidate templates using DB and Spider PSMs
             generateCandidateTemplates(templateHookedList, listOfScanPSMMap, significantThreshold, minFreq);
@@ -86,7 +96,6 @@ public class Assembler {
             HashMap<String, DenovoOnly> scanDnMap = buildScanDnMap(dnList);
             //Map Denovo only peptides to templates
             TemplateDenovoAligner dnAligner = new TemplateDenovoAligner(dnList, scanDnMap);
-            short kmerSize = 5;
             dnAligner.alignDenovoOnlyToTemplate(templateHookedList, kmerSize);
 
             float dbDnRatioThresh = 1.5f;

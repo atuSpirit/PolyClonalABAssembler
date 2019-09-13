@@ -19,6 +19,16 @@ public class DenovoOnly {
         this.intensity = intensity;
     }
 
+    public DenovoOnly(String scan, String peptide, short alc, short length, char[] AAs, short[] confScores, int intensity) {
+        this.scan = scan;
+        this.peptide = peptide;
+        this.alc = alc;
+        this.length = length;
+        this.AAs = AAs;
+        this.confScores = confScores;
+        this.intensity = intensity;
+    }
+
     /**
      * Convert the local confidence score into an array of scores.
      * @param confString

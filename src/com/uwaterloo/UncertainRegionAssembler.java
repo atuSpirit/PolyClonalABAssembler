@@ -1,5 +1,6 @@
 package com.uwaterloo;
 
+import Utils.CharEqual;
 import com.uwaterloo.Tools.CoverageConfEvaluator;
 
 import java.net.CookieHandler;
@@ -86,17 +87,21 @@ public class UncertainRegionAssembler {
      */
     private List<UncertainRegion> identifyUncertainRegionsByCoverage(TemplateHooked templateHooked,
                                                                      HashMap<String, PSMAligned> scanPSMMap,
-                                                                        int coverageConfThresh) {
+                                                                        int coverageConfThresh, int extendSize) {
         CoverageConfEvaluator confEvaluator = new CoverageConfEvaluator();
         int[] coverageConfs = confEvaluator.evaluateCoverageConf(templateHooked);
         int templateLength = templateHooked.getSeq().length;
         List<UncertainRegion> uncertainRegions = new ArrayList<>();
         for (int pos = 0; pos < templateLength; pos++) {
             if (coverageConfs[pos] < coverageConfThresh) {
-                Set<DenovoAligned> dnToRightSet = extractDnToRightAtPos(templateHooked, pos);
-                Set<DenovoAligned> dnToLeftSet = extractDnToLeftAtPos(templateHooked, pos);
-                Set<PSMAligned> dbSet = extractDbAtPos(templateHooked, pos, scanPSMMap);
-                uncertainRegions.add(new UncertainRegion(pos, pos, dnToRightSet, dnToLeftSet, dbSet));
+                int leftPos = (pos - extendSize) > 0 ? (pos - extendSize) : 0;
+                int rightPos = (pos + extendSize) < templateLength ? (pos + extendSize) : (templateLength - 1);
+                for (int i = leftPos; i <= rightPos; i++) {
+                    Set<DenovoAligned> dnToRightSet = extractDnToRightAtPos(templateHooked, i);
+                    Set<DenovoAligned> dnToLeftSet = extractDnToLeftAtPos(templateHooked, i);
+                    Set<PSMAligned> dbSet = extractDbAtPos(templateHooked, i, scanPSMMap);
+                    uncertainRegions.add(new UncertainRegion(i, i, dnToRightSet, dnToLeftSet, dbSet));
+                }
             }
         }
         return uncertainRegions;
@@ -168,7 +173,7 @@ public class UncertainRegionAssembler {
 
         List<Contig> assembledContigs = new ArrayList<>();
 
-/*
+//*
         System.out.println("dn to right");
         for (DenovoAligned dnAligned : dnAlignToRightList) {
             System.out.print(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
@@ -199,7 +204,7 @@ public class UncertainRegionAssembler {
             }
         }
 
-/*
+//*
         System.out.println("dn to left");
         for (DenovoAligned dnAligned : dnAlignToLeftList) {
             System.out.print(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
@@ -506,7 +511,7 @@ public class UncertainRegionAssembler {
         int start = -1;
 
         while (true) {
-            while ((i < seq1.length) && !charEqual(seq1[i], seq2[0])) {
+            while ((i < seq1.length) && !CharEqual.charEqual(seq1[i], seq2[0])) {
                 i++;
             }
             if (i == seq1.length) {
@@ -514,7 +519,7 @@ public class UncertainRegionAssembler {
             }
 
             start = i;
-            while ((i < seq1.length) && (j < seq2.length) && charEqual(seq1[i], seq2[j])) {
+            while ((i < seq1.length) && (j < seq2.length) && CharEqual.charEqual(seq1[i], seq2[j])) {
                 i++;
                 j++;
             }
@@ -527,18 +532,7 @@ public class UncertainRegionAssembler {
         }
     }
 
-    private boolean charEqual(char c1, char c2) {
-        if (c1 == c2) {
-            return true;
-        }
-        if (((c1 == 'I') && (c2 == 'L'))
-                || ((c1 == 'L') && (c2 == 'I'))
-                || ((c1 == 'N') && (c2 == 'D'))
-                || ((c1 == 'D') && (c2 == 'N'))) {
-            return true;
-        }
-        return false;
-    }
+
 
     int sumConfScores(int[] confs) {
         int sum = 0;
@@ -664,7 +658,7 @@ public class UncertainRegionAssembler {
             int endIndex = ((contigAAs.length - startIndex) > dnAAs.length) ? (startIndex + dnAAs.length) : contigAAs.length;
 
             for (int j = startIndex; j < endIndex; j++) {
-                if (!charEqual(contigAAs[j], dnAAs[j - startIndex])) {
+                if (!CharEqual.charEqual(contigAAs[j], dnAAs[j - startIndex])) {
                     isOverlapped = false;
                     break;
                 }
@@ -791,7 +785,7 @@ public class UncertainRegionAssembler {
             }
 
             for (int j = startIndex; j < endIndex; j++) {
-                if (!charEqual(contigAAs[contigAAs.length - 1 - j], dnAAs[dnAAs.length - 1 - (j - startIndex)])) {
+                if (!CharEqual.charEqual(contigAAs[contigAAs.length - 1 - j], dnAAs[dnAAs.length - 1 - (j - startIndex)])) {
                     isOverlapped = false;
                     break;
                 }
@@ -1118,13 +1112,15 @@ public class UncertainRegionAssembler {
                                          //float dbDnRatioThresh) {
                                          int coverageConfThresh) {
         int adjacentThresh = 10;
+        int extendSize = 3; //Extend the uncertain region to both side to get more related reads in
         for (int i = 0; i < templateHookedList.size(); i++) {
             TemplateHooked templateHooked = templateHookedList.get(i);
             System.out.println("assemble uncertain region for " + templateHooked.getTemplateAccession());
             HashMap<String, PSMAligned> scanPSMMap = listOfscanPSMMap.get(i);
             //Find uncertain regions where db / dn ratio less than dbDnRatioThresh
            // List<UncertainRegion> uncertainRegionList = identifyUncertainRegions(templateHooked, scanPSMMap, dbDnRatioThresh);
-            List<UncertainRegion> uncertainRegionList =  identifyUncertainRegionsByCoverage(templateHooked, scanPSMMap, coverageConfThresh);
+            List<UncertainRegion> uncertainRegionList =  identifyUncertainRegionsByCoverage(templateHooked, scanPSMMap,
+                                                                coverageConfThresh, extendSize);
             if (uncertainRegionList.size() == 0) {
                 continue;
             }
