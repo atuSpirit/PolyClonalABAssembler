@@ -1,6 +1,6 @@
 package com.uwaterloo.SignificantMutationsFinder;
 
-import Utils.CharEqual;
+import com.uwaterloo.Utils.CharEqual;
 
 import java.util.*;
 

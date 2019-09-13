@@ -1,8 +1,8 @@
 package com.uwaterloo;
 
-import Utils.CharEqual;
-import Utils.Edge;
-import Utils.Vertex;
+import com.uwaterloo.Utils.CharEqual;
+import com.uwaterloo.Utils.Edge;
+import com.uwaterloo.Utils.Vertex;
 import com.uwaterloo.ScanTemplateMapper.PSMAligned;
 import com.uwaterloo.ScanTemplateMapper.TemplateHooked;
 import com.uwaterloo.SignificantMutationsFinder.MutationsPattern;

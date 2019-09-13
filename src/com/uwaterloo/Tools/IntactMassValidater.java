@@ -1,6 +1,6 @@
 package com.uwaterloo.Tools;
 
-import Utils.AAMass;
+import com.uwaterloo.Utils.AAMass;
 import com.uwaterloo.Reader.TemplatesLoader;
 import com.uwaterloo.ScanTemplateMapper.Template;
 

@@ -1,4 +1,4 @@
-package Utils;
+package com.uwaterloo.Utils;
 
 public class CharEqual {
     public static boolean charEqual(char c1, char c2) {

@@ -1,6 +1,6 @@
 package com.uwaterloo.Tools;
 
-import Utils.Vertex;
+import com.uwaterloo.Utils.Vertex;
 import com.uwaterloo.*;
 import com.uwaterloo.Reader.PSMIonsReader;
 import com.uwaterloo.Reader.PSMReader;

@@ -1,6 +1,6 @@
 package com.uwaterloo.DenovoAssembler;
 
-import Utils.CharEqual;
+import com.uwaterloo.Utils.CharEqual;
 import com.uwaterloo.ScanTemplateMapper.PSMAligned;
 import com.uwaterloo.ScanTemplateMapper.TemplateHooked;
 import com.uwaterloo.Tools.CoverageConfEvaluator;

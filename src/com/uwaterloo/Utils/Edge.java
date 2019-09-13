@@ -1,4 +1,4 @@
-package Utils;
+package com.uwaterloo.Utils;
 
 public class Edge {
     Vertex startVertice;
