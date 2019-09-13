@@ -1,10 +1,8 @@
 package com.uwaterloo.Test;
 
-import com.uwaterloo.DenovoOnly;
+import com.uwaterloo.DenovoAssembler.DenovoOnly;
 import com.uwaterloo.Reader.DenovoOnlyReader;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class DenovoOnlyReaderTest {
     @Test

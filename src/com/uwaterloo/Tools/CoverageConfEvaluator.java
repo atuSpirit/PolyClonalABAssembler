@@ -1,7 +1,7 @@
 package com.uwaterloo.Tools;
 
-import com.uwaterloo.PSMAligned;
-import com.uwaterloo.TemplateHooked;
+import com.uwaterloo.ScanTemplateMapper.PSMAligned;
+import com.uwaterloo.ScanTemplateMapper.TemplateHooked;
 
 import java.util.List;
 

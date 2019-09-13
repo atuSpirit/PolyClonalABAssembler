@@ -1,6 +1,11 @@
 package com.uwaterloo;
 
 import Utils.CharEqual;
+import Utils.Edge;
+import Utils.Vertex;
+import com.uwaterloo.ScanTemplateMapper.PSMAligned;
+import com.uwaterloo.ScanTemplateMapper.TemplateHooked;
+import com.uwaterloo.SignificantMutationsFinder.MutationsPattern;
 
 import java.util.*;
 

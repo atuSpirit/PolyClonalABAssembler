@@ -1,12 +1,6 @@
 package com.uwaterloo.Test;
-import com.uwaterloo.DenovoAligned;
-import com.uwaterloo.DenovoOnly;
-import com.uwaterloo.UncertainRegionAssembler;
-import org.junit.Before;
+import com.uwaterloo.DenovoAssembler.UncertainRegionAssembler;
 import org.junit.Test;
-
-import java.util.HashMap;
-import java.util.List;
 
 import static org.junit.Assert.*;
 

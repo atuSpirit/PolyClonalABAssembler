@@ -1,10 +1,10 @@
 package com.uwaterloo.Tools;
 
-import com.uwaterloo.*;
 import com.uwaterloo.Reader.PSMIonsReader;
 import com.uwaterloo.Reader.PSMReader;
 import com.uwaterloo.Reader.ProteinPeptideReader;
 import com.uwaterloo.Reader.TemplatesLoader;
+import com.uwaterloo.ScanTemplateMapper.*;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -29,7 +29,7 @@ public class TemplatesSelecter {
     public static List<TemplateHooked> hookTemplates(String dir) {
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
-        List<PSM> psmList = psmReader.readCSVFile(psmFile);
+        List<TemplateHooked.PSM> psmList = psmReader.readCSVFile(psmFile);
 
         String psmIonsFile = dir + "PSM ions.csv";
         PSMIonsReader ionsReader = new PSMIonsReader();
@@ -247,16 +247,16 @@ public class TemplatesSelecter {
         dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_12\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_22\\";
         dir = "C:\\hao\\result\\NIST_Waters.clean_SPIDER_11\\";
-        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_84\\";
+        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_91\\";
 
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
-        int topK = 10;
+        int topK = 2;
         int scoreThresh = 300;  //300 to select better initial templates
 
 
         //If selecting from all antibody database, set it less than 1. If choose from template candidate, set it to 1
-        float descreaseRatio = 0.1f;  //If selecting templates from antibody database, choose 0.1f.  If choose top template, use 0
+        float descreaseRatio = 0.0f;  //If selecting templates from antibody database, choose 0.1f.  If choose top template, use 0
 
         TemplatesSelecter templatesSelecter = new TemplatesSelecter(topK);
 

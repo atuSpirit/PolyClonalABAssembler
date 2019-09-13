@@ -1,7 +1,6 @@
 package com.uwaterloo.Reader;
 
-import com.uwaterloo.DenovoOnly;
-import com.uwaterloo.PSM;
+import com.uwaterloo.DenovoAssembler.DenovoOnly;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;

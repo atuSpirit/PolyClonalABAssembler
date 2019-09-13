@@ -1,6 +1,11 @@
 package com.uwaterloo;
 
+import com.uwaterloo.DenovoAssembler.DenovoOnly;
+import com.uwaterloo.DenovoAssembler.UncertainRegionAssembler;
 import com.uwaterloo.Reader.*;
+import com.uwaterloo.ScanTemplateMapper.*;
+import com.uwaterloo.SignificantMutationsFinder.MutationValidator;
+import com.uwaterloo.SignificantMutationsFinder.MutationsPattern;
 import com.uwaterloo.Tools.CoverageConfEvaluator;
 import com.uwaterloo.Tools.IntactMassValidater;
 
@@ -36,7 +41,7 @@ public class Assembler {
         dir = "C:\\hao\\result\\NIST_Waters.EThcd_PEAKS_86\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
-        List<PSM> psmList = psmReader.readCSVFile(psmFile);
+        List<TemplateHooked.PSM> psmList = psmReader.readCSVFile(psmFile);
 
         String psmIonsFile = dir + "PSM ions.csv";
         PSMIonsReader ionsReader = new PSMIonsReader();
@@ -266,7 +271,7 @@ public class Assembler {
      * @param psmList
      * @param scanIonScoresMap
      */
-    public static void setIonScoresForPSMList(List<PSM> psmList, HashMap<String,short[]> scanIonScoresMap) {
+    public static void setIonScoresForPSMList(List<TemplateHooked.PSM> psmList, HashMap<String,short[]> scanIonScoresMap) {
         for (int i = 0; i < psmList.size(); i++) {
             String scan = psmList.get(i).getScan();
             if (scanIonScoresMap.containsKey(scan)) {

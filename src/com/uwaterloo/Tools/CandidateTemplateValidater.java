@@ -1,10 +1,13 @@
 package com.uwaterloo.Tools;
 
+import Utils.Vertex;
 import com.uwaterloo.*;
 import com.uwaterloo.Reader.PSMIonsReader;
 import com.uwaterloo.Reader.PSMReader;
 import com.uwaterloo.Reader.ProteinPeptideReader;
 import com.uwaterloo.Reader.TemplatesLoader;
+import com.uwaterloo.ScanTemplateMapper.*;
+import com.uwaterloo.SignificantMutationsFinder.MutationsPattern;
 
 import java.io.*;
 import java.util.*;
@@ -68,7 +71,7 @@ public class CandidateTemplateValidater {
     private TemplatePSMsAligner initialize(String dir) {
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
-        List<PSM> psmList = psmReader.readCSVFile(psmFile);
+        List<TemplateHooked.PSM> psmList = psmReader.readCSVFile(psmFile);
 
         String psmIonsFile = dir + "PSM ions.csv";
         PSMIonsReader ionsReader = new PSMIonsReader();

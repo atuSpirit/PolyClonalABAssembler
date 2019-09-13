@@ -1,6 +1,6 @@
 package com.uwaterloo.Reader;
 
-import com.uwaterloo.Template;
+import com.uwaterloo.ScanTemplateMapper.Template;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;

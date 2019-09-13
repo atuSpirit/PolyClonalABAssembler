@@ -1,7 +1,7 @@
 package com.uwaterloo.Test;
 
 
-import com.uwaterloo.PSMAligned;
+import com.uwaterloo.ScanTemplateMapper.PSMAligned;
 import org.junit.Test;
 
 import java.util.ArrayList;

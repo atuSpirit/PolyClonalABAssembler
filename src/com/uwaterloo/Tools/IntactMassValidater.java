@@ -2,7 +2,7 @@ package com.uwaterloo.Tools;
 
 import Utils.AAMass;
 import com.uwaterloo.Reader.TemplatesLoader;
-import com.uwaterloo.Template;
+import com.uwaterloo.ScanTemplateMapper.Template;
 
 import java.util.List;
 
