@@ -1,6 +1,7 @@
 package com.uwaterloo.Reader;
 
 import com.uwaterloo.ScanTemplateMapper.TemplateHooked;
+import com.uwaterloo.Utils.PSM;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -17,8 +18,8 @@ public class PSMReader extends CSVReader{
     public PSMReader() {
     }
 
-    public List<TemplateHooked.PSM> readCSVFile(String psmFile) {
-        List<TemplateHooked.PSM> fieldExtracted = new ArrayList<>();
+    public List<PSM> readCSVFile(String psmFile) {
+        List<PSM> fieldExtracted = new ArrayList<>();
 
         try (BufferedReader br = new BufferedReader(new FileReader(psmFile))) {
             String titleString = br.readLine();
@@ -26,7 +27,7 @@ public class PSMReader extends CSVReader{
 
             String line;
             while ((line = br.readLine()) != null) {
-                TemplateHooked.PSM psm = readOneLine(line);
+                PSM psm = readOneLine(line);
                 if (psm != null) {
                     fieldExtracted.add(psm);
                 }
@@ -41,7 +42,7 @@ public class PSMReader extends CSVReader{
         return fieldExtracted;
     }
 
-    private TemplateHooked.PSM readOneLine(String line) {
+    private PSM readOneLine(String line) {
         String[] fields = line.split(",");
 
         String scan = fields[fieldIndexMap.get("Scan")];
@@ -62,7 +63,7 @@ public class PSMReader extends CSVReader{
             return null;
         }
 
-        return new TemplateHooked.PSM(scan, peptide, intensity);
+        return new PSM(scan, peptide, intensity);
     }
 
 

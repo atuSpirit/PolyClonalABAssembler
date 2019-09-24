@@ -8,6 +8,8 @@ import com.uwaterloo.SignificantMutationsFinder.MutationValidator;
 import com.uwaterloo.SignificantMutationsFinder.MutationsPattern;
 import com.uwaterloo.Tools.CoverageConfEvaluator;
 import com.uwaterloo.Tools.IntactMassValidater;
+import com.uwaterloo.Utils.PSM;
+import com.uwaterloo.Utils.PeptideFilter;
 
 import java.io.*;
 import java.util.*;
@@ -37,11 +39,11 @@ public class Assembler {
         dir = "C:\\Hao\\result\\Water_mAB.clean_SPIDER_14\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_38\\";
-        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_87\\";
-        dir = "C:\\hao\\result\\NIST_Waters.EThcd_PEAKS_86\\";
+        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_127\\";
+        //dir = "C:\\hao\\result\\NIST_Waters.EThcd_PEAKS_99\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
-        List<TemplateHooked.PSM> psmList = psmReader.readCSVFile(psmFile);
+        List<PSM> psmList = psmReader.readCSVFile(psmFile);
 
         String psmIonsFile = dir + "PSM ions.csv";
         PSMIonsReader ionsReader = new PSMIonsReader();
@@ -63,9 +65,16 @@ public class Assembler {
         int confScoreThresh = 20;
         short kmerSize = 6;
         int inConfidentAANumThresh = 2;
-        dnList = dnReader.old_filterDnByConfScore(dnList, confScoreThresh, inConfidentAANumThresh);
+        PeptideFilter peptideFilter = new PeptideFilter(confScoreThresh, inConfidentAANumThresh);
+        dnList = peptideFilter.filterDnByConfScore(dnList);
         /**/
         System.out.println("filtered denovo size: " + dnList.size());
+
+        /* Filter psm with low fragments. Use the same criteria as dnList */
+        psmList = peptideFilter.filterPSMByConfScore(psmList);
+        System.out.println("filtered psm list size: " + psmList.size());
+
+
 
         String templateFasta = dir + "proteins.fasta";
         TemplatesLoader loader = new TemplatesLoader();
@@ -105,14 +114,18 @@ public class Assembler {
 
             float dbDnRatioThresh = 1.5f;
             int coverageConfThresh = 1000;
+            int fragmentConfThresh = 15;
             UncertainRegionAssembler uncertainRegionAssembler = new UncertainRegionAssembler();
             uncertainRegionAssembler.assembleUncertainRegions(templateHookedList,
-                    listOfScanPSMMap, scanDnMap, coverageConfThresh);
+                    listOfScanPSMMap, scanDnMap, coverageConfThresh, fragmentConfThresh);
                                                // listOfScanPSMMap, scanDnMap, dbDnRatioThresh);
         }
 
         System.out.println("Print Coverage Confidence score along template. ");
         printCoverageConfsAlongTemplates(templateHookedList);
+
+        System.out.println("Print the fragmentation confidence score along the template.");
+        printFragmentationConfsAlongTemplates(templateHookedList);
 
         //System.out.println("Intact mass of candidate templates");
         //printIntactMassForCandidateTemplates(templateHookedList);
@@ -138,6 +151,22 @@ public class Assembler {
             int sumScore = 0;
             for (TemplateHooked templateHooked : templateHookedList) {
                 int[] coverageConfs = confEvaluator.evaluateCoverageConf(templateHooked);
+            System.out.println(templateHooked.getTemplateAccession());
+            for (int conf : coverageConfs) {
+                System.out.print(conf + " ");
+                sumScore += conf;
+            }
+            System.out.println();
+            System.out.println("Average conf score: " + (sumScore / coverageConfs.length ));
+
+        }
+    }
+
+    private void printFragmentationConfsAlongTemplates(List<TemplateHooked> templateHookedList) {
+        CoverageConfEvaluator confEvaluator = new CoverageConfEvaluator();
+        int sumScore = 0;
+        for (TemplateHooked templateHooked : templateHookedList) {
+            int[] coverageConfs = confEvaluator.evaluateFragmentationConf(templateHooked);
             System.out.println(templateHooked.getTemplateAccession());
             for (int conf : coverageConfs) {
                 System.out.print(conf + " ");
@@ -271,7 +300,7 @@ public class Assembler {
      * @param psmList
      * @param scanIonScoresMap
      */
-    public static void setIonScoresForPSMList(List<TemplateHooked.PSM> psmList, HashMap<String,short[]> scanIonScoresMap) {
+    public static void setIonScoresForPSMList(List<PSM> psmList, HashMap<String,short[]> scanIonScoresMap) {
         for (int i = 0; i < psmList.size(); i++) {
             String scan = psmList.get(i).getScan();
             if (scanIonScoresMap.containsKey(scan)) {

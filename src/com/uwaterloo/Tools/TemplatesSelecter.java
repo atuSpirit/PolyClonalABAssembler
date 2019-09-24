@@ -5,6 +5,7 @@ import com.uwaterloo.Reader.PSMReader;
 import com.uwaterloo.Reader.ProteinPeptideReader;
 import com.uwaterloo.Reader.TemplatesLoader;
 import com.uwaterloo.ScanTemplateMapper.*;
+import com.uwaterloo.Utils.PSM;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -29,7 +30,7 @@ public class TemplatesSelecter {
     public static List<TemplateHooked> hookTemplates(String dir) {
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
-        List<TemplateHooked.PSM> psmList = psmReader.readCSVFile(psmFile);
+        List<PSM> psmList = psmReader.readCSVFile(psmFile);
 
         String psmIonsFile = dir + "PSM ions.csv";
         PSMIonsReader ionsReader = new PSMIonsReader();
@@ -199,10 +200,11 @@ public class TemplatesSelecter {
 
     /**
      * Select topK templates from list of templateHooked.
-     * @param dir
+     * @param templateHookedList
+     * @param topK
      * @return
      */
-    public List<TemplateHooked> selectTemplates(List<TemplateHooked> templateHookedList, String dir, int topK, int scoreThresh, float decreaseRatio) {
+    public List<TemplateHooked> selectTemplates(List<TemplateHooked> templateHookedList, int topK, int scoreThresh, float decreaseRatio) {
         List<TemplateHooked> topKTemplates = new ArrayList<>();
 
         for (int i = 0; i < topK; i++) {
@@ -211,6 +213,50 @@ public class TemplatesSelecter {
             decreasePsmConfScores(topHCTemplate, decreaseRatio);
         }
 
+        return topKTemplates;
+    }
+
+    public List<TemplateHooked> selectTemplatesAccordingToFragmentConfs(List<TemplateHooked> templateHookedList,
+                                                                        int topK) {
+        List<TemplateHooked> topKTemplates = new ArrayList<>();
+        CoverageConfEvaluator confEvaluator = new CoverageConfEvaluator();
+        HashMap<Integer, List<Integer>> fragConfSumTemplateMap = new HashMap<>();
+        List<Integer> fragConfSumList = new ArrayList<>();
+
+        for (int index = 0; index < templateHookedList.size(); index++) {
+            int[] fragmentConfs = confEvaluator.evaluateFragmentationConf(templateHookedList.get(index));
+            int sum = 0;
+            for (int conf : fragmentConfs) {
+                sum += conf;
+            }
+            fragConfSumList.add(sum);
+
+            if (fragConfSumTemplateMap.containsKey(sum)) {
+                List<Integer> indexList = fragConfSumTemplateMap.get(sum);
+                indexList.add(index);
+            } else {
+                List<Integer> indexList = new ArrayList<>();
+                indexList.add(index);
+                fragConfSumTemplateMap.put(sum, indexList);
+            }
+        }
+
+        Collections.sort(fragConfSumList);
+
+        int topIndex = 0;
+        int size = fragConfSumList.size();
+        while (topIndex < topK) {
+            int sum = fragConfSumList.get(size - 1 - topIndex);
+            System.out.println(sum);
+            List<Integer> indexList = fragConfSumTemplateMap.get(sum);
+            for (int index : indexList) {
+                topKTemplates.add(templateHookedList.get(index));
+                topIndex++;
+                if (topIndex == topK) {
+                    break;
+                }
+            }
+        }
         return topKTemplates;
     }
 
@@ -247,12 +293,13 @@ public class TemplatesSelecter {
         dir = "C:\\Hao\\result\\Nuno.LC_SPIDER_12\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_22\\";
         dir = "C:\\hao\\result\\NIST_Waters.clean_SPIDER_11\\";
-        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_91\\";
+        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_127\\";
+        //dir = "C:\\hao\\result\\NIST_Waters.EThcd_PEAKS_83\\";
 
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
-        int topK = 2;
-        int scoreThresh = 300;  //300 to select better initial templates
+        int topK = 3;
+        int scoreThresh = 200;  //300 to select better initial templates
 
 
         //If selecting from all antibody database, set it less than 1. If choose from template candidate, set it to 1
@@ -271,12 +318,14 @@ public class TemplatesSelecter {
         templatesSelecter.exportStatitic(lcFilePath, templatesSelecter.getLightChainTemplates(), scoreThresh);
 
         List<TemplateHooked> topKHeavyTemplates = templatesSelecter.selectTemplates(templatesSelecter.getHeavyChainTemplates(),
-                                        dir, topK, scoreThresh, descreaseRatio);
+                                        topK, scoreThresh, descreaseRatio);
+        //List<TemplateHooked> topKHeavyTemplates = templatesSelecter.selectTemplatesAccordingToFragmentConfs(templatesSelecter.getHeavyChainTemplates(), topK);
         String hcFastaFile = dir + "heavy.top" + topK + ".fasta";
         templatesSelecter.exportFasta(hcFastaFile, topKHeavyTemplates);
 
         List<TemplateHooked> topKLightTemplates = templatesSelecter.selectTemplates(templatesSelecter.getLightChainTemplates(),
-                                        dir, topK, scoreThresh, descreaseRatio);
+                                        topK, scoreThresh, descreaseRatio);
+        //List<TemplateHooked> topKLightTemplates = templatesSelecter.selectTemplatesAccordingToFragmentConfs(templatesSelecter.getLightChainTemplates(),  topK);
         String lcFastaFile = dir + "light.top" + topK + ".fasta";
         templatesSelecter.exportFasta(lcFastaFile, topKLightTemplates);
 

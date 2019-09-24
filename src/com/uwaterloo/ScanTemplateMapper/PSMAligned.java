@@ -1,10 +1,12 @@
 package com.uwaterloo.ScanTemplateMapper;
 
+import com.uwaterloo.Utils.PSM;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class PSMAligned extends TemplateHooked.PSM {
+public class PSMAligned extends PSM {
     int templateId; //The id of the template sequence
     int start;
     int end;
@@ -37,9 +39,9 @@ public class PSMAligned extends TemplateHooked.PSM {
         this.start = start;
         this.end = end;
         if (peptide.contains("del")) {
-            this.ionScores = modifyIonScoreForDeletion(AAs, ionScores);
+            this.setIonScores(modifyIonScoreForDeletion(AAs, ionScores));
         } else {
-            this.ionScores = ionScores;
+            this.setIonScores(ionScores);
         }
     }
 
@@ -157,7 +159,7 @@ public class PSMAligned extends TemplateHooked.PSM {
                 posOfVar += String.valueOf(i) + " ";
             }
         }
-        String str = "Scan: " + scan + " Peptide: " + peptide +
+        String str = "Scan: " + this.getScan() + " Peptide: " + this.getPeptide() +
                 " char[]: " + new String(AAs) +
                 " position of variations: " + posOfVar +
                 " start: " + start + " end: " + end;

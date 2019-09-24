@@ -7,12 +7,14 @@ public class Vertex {
     int pos;
     char AA;
     //MutationsPattern pattern;
+
     List<Edge> inEdges;
     List<Edge> outEdges;
 
     public Vertex(int pos, char AA) {
         this.pos = pos;
         this.AA = AA;
+
         inEdges = new ArrayList<>();
         outEdges = new ArrayList<>();
     }
@@ -48,6 +50,7 @@ public class Vertex {
         return outEdges;
     }
 
+
     @Override
     public String toString() {
         return pos + " " + AA;
@@ -58,7 +61,7 @@ public class Vertex {
         if (this.getPos() != ((Vertex) o).getPos()) {
             return false;
         }
-        if (this.getAA() == ((Vertex) o).getAA()) {
+        if (CharEqual.charEqual(this.getAA(), ((Vertex) o).getAA())) {
             return true;
         }
 

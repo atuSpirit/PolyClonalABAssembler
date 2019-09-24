@@ -110,41 +110,12 @@ public class DenovoOnlyReader extends CSVReader{
         return truncatedDn;
     }
 
-    public List<DenovoOnly> filterDnByConfScore(List<DenovoOnly> dnList, int confAAThresh, short kmerSize) {
+    public List<DenovoOnly> new_filterDnByConfScore(List<DenovoOnly> dnList, int confAAThresh, short kmerSize) {
         List<DenovoOnly> newDnList = new ArrayList<>();
         for (DenovoOnly dn : dnList) {
             DenovoOnly truncatedDn = truncateDnAAByConfScore(dn, confAAThresh);
             if (truncatedDn.getLength() >= kmerSize) {
                 newDnList.add(truncatedDn);
-            }
-        }
-        return newDnList;
-    }
-
-    /**
-     * Filter out those denovo only peptide containing confScore less than confScoreThresh.
-     * @param dnList
-     * @param confScoreThresh
-     * @return a new dnList with high conf score
-     */
-    public List<DenovoOnly> old_filterDnByConfScore(List<DenovoOnly> dnList, int confScoreThresh,
-                                                int inConfidentNumThresh) {
-        List<DenovoOnly> newDnList = new ArrayList<>();
-        for (DenovoOnly dn : dnList) {
-            boolean isConfident = true;
-            short[] confScores = dn.getConfScores();
-            int inConfidentNum = 0;
-            for (short confScore : confScores) {
-                if (confScore < confScoreThresh) {
-                    inConfidentNum++;
-                }
-                if (inConfidentNum >= inConfidentNumThresh) {
-                    isConfident = false;
-                    break;
-                }
-            }
-            if (isConfident) {
-                newDnList.add(dn);
             }
         }
         return newDnList;

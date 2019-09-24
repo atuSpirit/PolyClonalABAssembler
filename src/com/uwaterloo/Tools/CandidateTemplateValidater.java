@@ -1,5 +1,6 @@
 package com.uwaterloo.Tools;
 
+import com.uwaterloo.Utils.PSM;
 import com.uwaterloo.Utils.Vertex;
 import com.uwaterloo.*;
 import com.uwaterloo.Reader.PSMIonsReader;
@@ -27,7 +28,7 @@ public class CandidateTemplateValidater {
         CandidateTemplateValidater candidateTemplateValidater = new CandidateTemplateValidater();
 
         String dir = "C:\\hao\\result\\ab19001.polyclonal.05.05_SPIDER_16\\";
-        dir = "C:\\Hao\\result\\NIST_Waters.EThcd_SPIDER_84\\";
+        dir = "C:\\Hao\\result\\NIST_Waters.EThcd_SPIDER_127\\";
         String contaminantFile = "C:\\hao\\database\\contaminants.fasta";
         String candidateTemplateWithContaminant = "C:\\Hao\\database\\candidate_template_with_contaminant.fasta";
 
@@ -71,7 +72,7 @@ public class CandidateTemplateValidater {
     private TemplatePSMsAligner initialize(String dir) {
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
-        List<TemplateHooked.PSM> psmList = psmReader.readCSVFile(psmFile);
+        List<PSM> psmList = psmReader.readCSVFile(psmFile);
 
         String psmIonsFile = dir + "PSM ions.csv";
         PSMIonsReader ionsReader = new PSMIonsReader();

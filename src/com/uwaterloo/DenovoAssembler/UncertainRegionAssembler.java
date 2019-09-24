@@ -88,13 +88,17 @@ public class UncertainRegionAssembler {
      */
     private List<UncertainRegion> identifyUncertainRegionsByCoverage(TemplateHooked templateHooked,
                                                                      HashMap<String, PSMAligned> scanPSMMap,
-                                                                        int coverageConfThresh, int extendSize) {
+                                                                        int coverageConfThresh,
+                                                                     int fragmentConfThresh,
+                                                                     int extendSize) {
         CoverageConfEvaluator confEvaluator = new CoverageConfEvaluator();
         int[] coverageConfs = confEvaluator.evaluateCoverageConf(templateHooked);
+        int[] fragmentConfs = confEvaluator.evaluateFragmentationConf(templateHooked);
         int templateLength = templateHooked.getSeq().length;
         List<UncertainRegion> uncertainRegions = new ArrayList<>();
         for (int pos = 0; pos < templateLength; pos++) {
-            if (coverageConfs[pos] < coverageConfThresh) {
+            //if (coverageConfs[pos] < coverageConfThresh) {
+            if (fragmentConfs[pos] < fragmentConfThresh) {
                 int leftPos = (pos - extendSize) > 0 ? (pos - extendSize) : 0;
                 int rightPos = (pos + extendSize) < templateLength ? (pos + extendSize) : (templateLength - 1);
                 for (int i = leftPos; i <= rightPos; i++) {
@@ -1111,7 +1115,8 @@ public class UncertainRegionAssembler {
                                          List<HashMap<String, PSMAligned>> listOfscanPSMMap,
                                          HashMap<String, DenovoOnly> scanDnMap,
                                          //float dbDnRatioThresh) {
-                                         int coverageConfThresh) {
+                                         int coverageConfThresh,
+                                         int fragmentConfThresh) {
         int adjacentThresh = 10;
         int extendSize = 3; //Extend the uncertain region to both side to get more related reads in
         for (int i = 0; i < templateHookedList.size(); i++) {
@@ -1121,7 +1126,8 @@ public class UncertainRegionAssembler {
             //Find uncertain regions where db / dn ratio less than dbDnRatioThresh
            // List<UncertainRegion> uncertainRegionList = identifyUncertainRegions(templateHooked, scanPSMMap, dbDnRatioThresh);
             List<UncertainRegion> uncertainRegionList =  identifyUncertainRegionsByCoverage(templateHooked, scanPSMMap,
-                                                                coverageConfThresh, extendSize);
+                                                                coverageConfThresh, fragmentConfThresh,
+                    extendSize);
             if (uncertainRegionList.size() == 0) {
                 continue;
             }
@@ -1131,10 +1137,11 @@ public class UncertainRegionAssembler {
             //For each merged uncertain region, generate assembled contigs
             List<Contig> assembledContigs = new ArrayList<>();
             for (UncertainRegion regionToAssemble : mergedUncertainRegions) {
-                //regionToAssemble.setDnAlignToRightSet(mergeDuplicateDn(regionToAssemble.dnAlignToRightSet, scanDnMap));
-                //regionToAssemble.setDnAlignToLeftSet(mergeDuplicateDn(regionToAssemble.dnAlignToLeftSet, scanDnMap));
-
-                assembledContigs.addAll(assembleOneRegion(regionToAssemble, scanDnMap));
+                // Assemble according to the score of contig
+                //assembledContigs.addAll(assembleOneRegion(regionToAssemble, scanDnMap));
+                //Trial Test for new assembleOneRegionByGraph
+                UncertainRegionGraphAssembler graphAssembler = new UncertainRegionGraphAssembler(scanDnMap);
+                assembledContigs.addAll(graphAssembler.assembleOneRegionByGraph(regionToAssemble));
             }
 
             /* Filter the assembled contigs according to the average score threshold

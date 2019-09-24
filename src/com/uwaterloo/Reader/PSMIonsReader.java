@@ -37,7 +37,7 @@ public class PSMIonsReader extends CSVReader {
                 int length = Integer.valueOf(fields[fieldIndexMap.get("Length")]);
                 String ionType = fields[fieldIndexMap.get("ion")];
                 int pos = Integer.valueOf(fields[fieldIndexMap.get("pos")]) - 1;    //starting from zero
-                if (ionType.startsWith("y")) {
+                if (ionType.startsWith("y") || ionType.startsWith("z") || ionType.startsWith("x")) {
                     //For y-ion, the pos in file is from the right side, should be transformed to starting from left
                     pos = length - pos - 2;
                 }

@@ -1,5 +1,7 @@
 package com.uwaterloo.ScanTemplateMapper;
 
+import com.uwaterloo.Utils.PSM;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +19,7 @@ public class TemplatePSMsAligner {
      * @return a list of aligned psms with its aligned position list added, a list of scans is stored for each position
      *          of the template.
      */
-    private void buildListOfPSMAligned(int templateNum, List<TemplateHooked.PSM> psmList,
+    private void buildListOfPSMAligned(int templateNum, List<PSM> psmList,
                                                    HashMap<String, List<TMapPosition>> peptideProteinMap) {
 
         listOfPSMAlignedList = new ArrayList<>();
@@ -26,13 +28,13 @@ public class TemplatePSMsAligner {
             listOfPSMAlignedList.add(psmAlignedList);
         }
 
-        for (TemplateHooked.PSM psm : psmList) {
+        for (PSM psm : psmList) {
             String peptide = psm.getPeptide();
             List<TMapPosition> tMapPositionList = peptideProteinMap.get(peptide);
             for (TMapPosition tMapPosition : tMapPositionList) {
                 int templateId = tMapPosition.getTemplateId();
                 PSMAligned psmAligned = new PSMAligned(psm.getScan(), peptide, psm.getIntensity(), templateId,
-                        tMapPosition.getStart(), tMapPosition.getEnd(), psm.ionScores);
+                        tMapPosition.getStart(), tMapPosition.getEnd(), psm.getIonScores());
                 listOfPSMAlignedList.get(templateId).add(psmAligned);
             }
         }
@@ -75,7 +77,7 @@ public class TemplatePSMsAligner {
         return templateHooked;
     }
 
-    public List<TemplateHooked> alignPSMstoTemplate(List<TemplateHooked.PSM> psmList, List<Template> templateList,
+    public List<TemplateHooked> alignPSMstoTemplate(List<PSM> psmList, List<Template> templateList,
                                                     HashMap<String, List<TMapPosition>> peptideProteinMap) {
 
         int templateNum = templateList.size();
