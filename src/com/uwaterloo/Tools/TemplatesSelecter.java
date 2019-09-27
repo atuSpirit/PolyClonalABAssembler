@@ -18,6 +18,10 @@ public class TemplatesSelecter {
     List<TemplateHooked> lightChainTemplates;
     List<TemplateHooked> heavyChainTemplates;
     final int MAX_LIGHT_CHAIN_LEN = 220;
+    //The metrics to evaluate template
+    final int METRIC_CONFIDENT_AA = 0;   //sum of score of AA passed confScoreThresh
+    final int METRIC_SUM_SCORE = 1; //Summation of AA scores
+    final int METRIC_FRAGCONFSUM = 2;   //Number of AA with full fragmentation in db result
     int topK;
 
     public TemplatesSelecter(int topK) {
@@ -63,10 +67,25 @@ public class TemplatesSelecter {
         }
     }
 
-    private TemplateHooked getTopTemplate(List<TemplateHooked> templateList, int scoreThresh) {
+    /**
+     * Get top template according to specified criteria
+     * @param templateList
+     * @param scoreThresh
+     * @param flag to specify the critera used to sort the template list.
+     *             0: Using confidentAANum
+     *             1: Using sum of AA score
+     *             2: Using number of AA that have full fragmentation (fragConfsSum)
+     * @return
+     */
+    private TemplateHooked getTopTemplate(List<TemplateHooked> templateList, int scoreThresh, int flag) {
         List<TemplateStatistics> templateStatisticsList = generateStatistics(templateList, scoreThresh);
-        Collections.sort(templateStatisticsList, TemplateStatistics.cmpReverseConfidentAANum());
-        //Collections.sort(templateStatisticsList, TemplateStatistics.cmpReverseScoreSum());
+        if (flag == METRIC_CONFIDENT_AA) {
+            Collections.sort(templateStatisticsList, TemplateStatistics.cmpReverseConfidentAANum());
+        } else if (flag == METRIC_FRAGCONFSUM) {
+            Collections.sort(templateStatisticsList, TemplateStatistics.cmpReverseFragConfsSum());
+        } else if (flag == METRIC_SUM_SCORE){
+            Collections.sort(templateStatisticsList, TemplateStatistics.cmpReverseScoreSum());
+        }
 
         int templateId = templateStatisticsList.get(0).getTemplateId();
     //    System.out.println(templateList.get(templateId).getTemplateAccession() + " " + templateStatisticsList.get(0).toString());
@@ -85,6 +104,7 @@ public class TemplatesSelecter {
             int confidentAANum = 0;
             int moreConfidentAANum = 0;
             int scoreSum = 0;
+            int fragConfSum = 0;    //The total number of confident fragmentation AA with db result
 
             for (int i = 0; i < templateHooked.getSeq().length; i++) {
                 List<String> scanList = templateHooked.getMappedScanList().get(i);
@@ -103,6 +123,9 @@ public class TemplatesSelecter {
                         for (int j = start; j <= end; j++) {
                             if (psmAligned.getIonScores() == null) continue;
                             templateAAScore[j] += psmAligned.getIonScores()[j - start];
+                            if (psmAligned.getIonScores()[j - start] == 100) {
+                                fragConfSum++;
+                            }
                         }
                         //Add scans with db result mapped to the template
                         scanSet.add(psmAligned.getScan());
@@ -143,7 +166,7 @@ public class TemplatesSelecter {
 
             }
             TemplateStatistics templateStatistics = new TemplateStatistics(templateId, scanSet.size(),
-                    coveredAANum, confidentAANum, moreConfidentAANum, scoreSum);
+                    coveredAANum, confidentAANum, moreConfidentAANum, scoreSum, fragConfSum);
             templateStatisticsList.add(templateStatistics);
         }
         return templateStatisticsList;
@@ -175,7 +198,8 @@ public class TemplatesSelecter {
             System.out.println(templateStatistics.getTemplateId() + "\t" +
                     + templateStatistics.getCoveredAANum() + "\t" + templateStatistics.getPsmNum() +
                     "\t" + templateStatistics.getScoreSum() + "\t" + templateStatistics.getConfidentAANum()
-                    + "\t" + templateStatistics.getMoreConfidentAANum());
+                    + "\t" + templateStatistics.getMoreConfidentAANum()
+                    + "\t" + templateStatistics.getFragConfsSum());
         }
     }
 
@@ -184,7 +208,7 @@ public class TemplatesSelecter {
         Collections.sort(templateStatisticsList, TemplateStatistics.cmpReverseConfidentAANum());
 
         try (BufferedWriter br = new BufferedWriter(new FileWriter(filePath))) {
-            br.write("Accession\tpsmNum\tcoveredAANum\tconfidentAANum\tmoreConfidentAANum\ttotalScore");
+            br.write("Accession\tpsmNum\tcoveredAANum\tconfidentAANum\tmoreConfidentAANum\tfragConfSum\ttotalScore");
             br.write("\n");
             for (TemplateStatistics templateStatistics : templateStatisticsList) {
                 br.write(templateHookedList.get(templateStatistics.getTemplateId()).getTemplateAccession());
@@ -202,20 +226,28 @@ public class TemplatesSelecter {
      * Select topK templates from list of templateHooked.
      * @param templateHookedList
      * @param topK
+     * @param scoreThresh
+     * @param decreaseRatio
+     * @param metricFlag The flag to choose metric to evaluate a template
      * @return
      */
-    public List<TemplateHooked> selectTemplates(List<TemplateHooked> templateHookedList, int topK, int scoreThresh, float decreaseRatio) {
+    public List<TemplateHooked> selectTemplates(List<TemplateHooked> templateHookedList, int topK,
+                                                int scoreThresh, float decreaseRatio,
+                                                int metricFlag) {
         List<TemplateHooked> topKTemplates = new ArrayList<>();
 
         for (int i = 0; i < topK; i++) {
-            TemplateHooked topHCTemplate = getTopTemplate(templateHookedList, scoreThresh);
+            TemplateHooked topHCTemplate = getTopTemplate(templateHookedList, scoreThresh, metricFlag);
             topKTemplates.add(topHCTemplate);
+
             decreasePsmConfScores(topHCTemplate, decreaseRatio);
+
         }
 
         return topKTemplates;
     }
 
+    /** Outdated
     public List<TemplateHooked> selectTemplatesAccordingToFragmentConfs(List<TemplateHooked> templateHookedList,
                                                                         int topK) {
         List<TemplateHooked> topKTemplates = new ArrayList<>();
@@ -259,6 +291,7 @@ public class TemplatesSelecter {
         }
         return topKTemplates;
     }
+     */
 
     public List<TemplateHooked> getLightChainTemplates() {
         return lightChainTemplates;
@@ -298,7 +331,7 @@ public class TemplatesSelecter {
 
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
-        int topK = 3;
+        int topK = 2;
         int scoreThresh = 200;  //300 to select better initial templates
 
 
@@ -306,6 +339,8 @@ public class TemplatesSelecter {
         float descreaseRatio = 0.0f;  //If selecting templates from antibody database, choose 0.1f.  If choose top template, use 0
 
         TemplatesSelecter templatesSelecter = new TemplatesSelecter(topK);
+        int metricFlag = templatesSelecter.METRIC_CONFIDENT_AA;
+        metricFlag = templatesSelecter.METRIC_FRAGCONFSUM;
 
         List<TemplateHooked> templateHookedList = hookTemplates(dir);
         templatesSelecter.splitHeavyLight(templateHookedList);
@@ -318,14 +353,12 @@ public class TemplatesSelecter {
         templatesSelecter.exportStatitic(lcFilePath, templatesSelecter.getLightChainTemplates(), scoreThresh);
 
         List<TemplateHooked> topKHeavyTemplates = templatesSelecter.selectTemplates(templatesSelecter.getHeavyChainTemplates(),
-                                        topK, scoreThresh, descreaseRatio);
-        //List<TemplateHooked> topKHeavyTemplates = templatesSelecter.selectTemplatesAccordingToFragmentConfs(templatesSelecter.getHeavyChainTemplates(), topK);
+                                        topK, scoreThresh, descreaseRatio, metricFlag);
         String hcFastaFile = dir + "heavy.top" + topK + ".fasta";
         templatesSelecter.exportFasta(hcFastaFile, topKHeavyTemplates);
 
         List<TemplateHooked> topKLightTemplates = templatesSelecter.selectTemplates(templatesSelecter.getLightChainTemplates(),
-                                        topK, scoreThresh, descreaseRatio);
-        //List<TemplateHooked> topKLightTemplates = templatesSelecter.selectTemplatesAccordingToFragmentConfs(templatesSelecter.getLightChainTemplates(),  topK);
+                                        topK, scoreThresh, descreaseRatio, metricFlag);
         String lcFastaFile = dir + "light.top" + topK + ".fasta";
         templatesSelecter.exportFasta(lcFastaFile, topKLightTemplates);
 

@@ -39,7 +39,7 @@ public class Assembler {
         dir = "C:\\Hao\\result\\Water_mAB.clean_SPIDER_14\\";
         //dir = "D:\\Hao\\result\\Water_mAB.clean_PEAKS_19\\";
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_38\\";
-        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_127\\";
+        dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_113\\";
         //dir = "C:\\hao\\result\\NIST_Waters.EThcd_PEAKS_99\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
@@ -63,7 +63,7 @@ public class Assembler {
 */
         //Old way of filter low quality reads.
         int confScoreThresh = 20;
-        short kmerSize = 6;
+        short kmerSize = 5;
         int inConfidentAANumThresh = 2;
         PeptideFilter peptideFilter = new PeptideFilter(confScoreThresh, inConfidentAANumThresh);
         dnList = peptideFilter.filterDnByConfScore(dnList);

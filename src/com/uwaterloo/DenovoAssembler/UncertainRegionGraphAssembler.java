@@ -30,7 +30,8 @@ public class UncertainRegionGraphAssembler {
 
         TreeMap<Integer, List<WeightedVertex>> assemblyGraph = new TreeMap<>();
 
-
+        /*
+        System.out.println("Dn to right:");
         for (DenovoAligned dnAligned : dnAlignToRightList) {
             System.out.print(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
                     " " + dnAligned.getScore() + " " + dnAligned.getDnScan());
@@ -39,9 +40,12 @@ public class UncertainRegionGraphAssembler {
             }
             System.out.println();
         }
+        /**/
+
         buildDnGraph(assemblyGraph, dnAlignToRightList, true);
-        System.out.println("dn to left");
+
         /*
+        System.out.println("dn to left");
         for (DenovoAligned dnAligned : dnAlignToLeftList) {
             System.out.print(dnAligned.gettEnd() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
                     " " +  dnAligned.getScore() + " " + dnAligned.getDnScan());
@@ -50,7 +54,7 @@ public class UncertainRegionGraphAssembler {
             }
             System.out.println();
         }
-         */
+         /**/
         buildDnGraph(assemblyGraph, dnAlignToLeftList, false);
 
         /*
@@ -63,8 +67,7 @@ public class UncertainRegionGraphAssembler {
             System.out.println();
         }
 
-         */
-
+        /* */
 
         buildPSMGraph(assemblyGraph, psmAlignedList);
 
@@ -337,7 +340,7 @@ public class UncertainRegionGraphAssembler {
                     score += confs[i];
                 }
 
-                Contig contig = new Contig(vertex.getPos() + 1, vertex.getPos() + 1 + length,
+                Contig contig = new Contig(vertex.getPos() + 1, vertex.getPos() + length,
                         AAs, confs, score);
                 contigList.add(contig);
             } else {

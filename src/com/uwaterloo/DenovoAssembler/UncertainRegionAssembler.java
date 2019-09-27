@@ -1180,6 +1180,9 @@ public class UncertainRegionAssembler {
                 System.out.println(assembledContig.toString());
             }
 
+            if (templateHooked.getTemplateAccession().startsWith("can10_ab|id_97")) {
+                System.out.println("Debug");
+            }
             //Select contigs with max score and apply to the template to generate candidate template.
             generateCandidateTemplate(templateHooked, topAssembledContigs);
 
