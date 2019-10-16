@@ -36,6 +36,9 @@ public class PeptideFilter {
     public List<PSM> filterPSMByConfScore(List<PSM> psmList) {
         List<PSM> newPSMList = new ArrayList<>();
         for (PSM psm : psmList) {
+            if (psm.getIonScores() == null) {
+                continue;
+            }
             if (isConfident(psm.getIonScores())) {
                 newPSMList.add(psm);
             }

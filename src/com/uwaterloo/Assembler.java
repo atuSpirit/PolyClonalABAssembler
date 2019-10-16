@@ -41,6 +41,9 @@ public class Assembler {
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_38\\";
         dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_113\\";
         //dir = "C:\\hao\\result\\NIST_Waters.EThcd_PEAKS_99\\";
+        dir = "C:\\hao\\result\\NIST_Waters.Peaks8_SPIDER_69\\";
+        //dir = "C:\\hao\\result\\ab19001.peaks8_SPIDER_33\\";
+        //dir = "C:\\hao\\result\\Nuno.HC.Peaks8_SPIDER_20\\";
         String psmFile = dir + "DB search psm.csv";
         PSMReader psmReader = new PSMReader();
         List<PSM> psmList = psmReader.readCSVFile(psmFile);
@@ -63,7 +66,7 @@ public class Assembler {
 */
         //Old way of filter low quality reads.
         int confScoreThresh = 20;
-        short kmerSize = 5;
+        short kmerSize = 6;
         int inConfidentAANumThresh = 2;
         PeptideFilter peptideFilter = new PeptideFilter(confScoreThresh, inConfidentAANumThresh);
         dnList = peptideFilter.filterDnByConfScore(dnList);
@@ -142,7 +145,7 @@ public class Assembler {
         int min_template_length = 0;  //If a template length is shorter than the min_length, don't output it.
 
         System.out.println("Exporting candidate templates: ");
-        exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
+        //exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
 
     }
 

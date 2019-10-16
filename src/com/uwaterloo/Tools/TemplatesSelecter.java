@@ -63,6 +63,7 @@ public class TemplatesSelecter {
                 lightChainTemplates.add(templateHooked);
             } else {
                 heavyChainTemplates.add(templateHooked);
+                //System.out.println("heavy " + templateHooked.getSeq().length);
             }
         }
     }
@@ -327,12 +328,15 @@ public class TemplatesSelecter {
         dir = "C:\\hao\\result\\Hieu.mixed_data_SPIDER_22\\";
         dir = "C:\\hao\\result\\NIST_Waters.clean_SPIDER_11\\";
         dir = "C:\\hao\\result\\NIST_Waters.EThcd_SPIDER_127\\";
-        //dir = "C:\\hao\\result\\NIST_Waters.EThcd_PEAKS_83\\";
+        dir = "C:\\hao\\result\\NIST_Waters.Peaks8_SPIDER_42\\";
+        dir = "C:\\hao\\result\\NIST_Waters.Peaks8_SPIDER_63\\";
+        dir = "C:\\hao\\result\\ab19001.peaks8_SPIDER_36\\";
+        //dir = "C:\\hao\\result\\Nuno.HC.Peaks8_SPIDER_63\\";
 
         //dir = "D:\\Hao\\result\\Water_mAB.clean_SPIDER_11\\";
 
-        int topK = 2;
-        int scoreThresh = 200;  //300 to select better initial templates
+        int topK = 4;
+        int scoreThresh = 300;  //300 to select better initial templates
 
 
         //If selecting from all antibody database, set it less than 1. If choose from template candidate, set it to 1

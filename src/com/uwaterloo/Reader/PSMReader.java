@@ -45,7 +45,10 @@ public class PSMReader extends CSVReader{
     private PSM readOneLine(String line) {
         String[] fields = line.split(",");
 
-        String scan = fields[fieldIndexMap.get("Scan")];
+        //For Peaks X result
+        //String scan = fields[fieldIndexMap.get("Scan")];
+        //For Peaks 8 result
+        String scan = "F" + fields[fieldIndexMap.get("Fraction")] + ":" + fields[fieldIndexMap.get("Scan")];
         String peptide = fields[fieldIndexMap.get("Peptide")];
         int intensity = 0;
 

@@ -32,15 +32,20 @@ public class PSMIonsReader extends CSVReader {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] fields = line.split(",");
-
-                String scan = fields[fieldIndexMap.get("scan")];
+                //For Peaks X result
+                //String scan = fields[fieldIndexMap.get("scan")];
+                //For Peaks 8 result
+                String scan = "F" + fields[fieldIndexMap.get("Fraction")] + ":" + fields[fieldIndexMap.get("scan")];
                 int length = Integer.valueOf(fields[fieldIndexMap.get("Length")]);
+
                 String ionType = fields[fieldIndexMap.get("ion")];
                 int pos = Integer.valueOf(fields[fieldIndexMap.get("pos")]) - 1;    //starting from zero
+
                 if (ionType.startsWith("y") || ionType.startsWith("z") || ionType.startsWith("x")) {
                     //For y-ion, the pos in file is from the right side, should be transformed to starting from left
                     pos = length - pos - 2;
                 }
+
                 if (scanIonsMap.containsKey(scan)) {
                     scanIonsMap.get(scan)[pos] = 1;
                 } else {

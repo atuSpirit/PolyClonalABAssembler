@@ -30,7 +30,7 @@ public class UncertainRegionGraphAssembler {
 
         TreeMap<Integer, List<WeightedVertex>> assemblyGraph = new TreeMap<>();
 
-        /*
+        //*
         System.out.println("Dn to right:");
         for (DenovoAligned dnAligned : dnAlignToRightList) {
             System.out.print(dnAligned.gettStart() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +
@@ -44,7 +44,7 @@ public class UncertainRegionGraphAssembler {
 
         buildDnGraph(assemblyGraph, dnAlignToRightList, true);
 
-        /*
+        //*
         System.out.println("dn to left");
         for (DenovoAligned dnAligned : dnAlignToLeftList) {
             System.out.print(dnAligned.gettEnd() + " " + new String(scanDnMap.get(dnAligned.getDnScan()).getAAs()) +

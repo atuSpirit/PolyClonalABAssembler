@@ -40,6 +40,7 @@ public class TemplatesLoader {
                     }
 
                     Pattern p = Pattern.compile("^>(\\S+)");
+                    //p = Pattern.compile("^>sp\\|(\\S+)");
                     Matcher m = p.matcher(line);
                     if (m.find()) {
                         accession = m.group(1);

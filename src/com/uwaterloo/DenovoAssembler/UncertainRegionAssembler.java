@@ -1134,6 +1134,9 @@ public class UncertainRegionAssembler {
             //Merge adjacent uncertain region whose distance less than adjacentThresh
             List<UncertainRegion> mergedUncertainRegions = mergeAdjacentRegion(uncertainRegionList, adjacentThresh);
 
+            if (templateHooked.getTemplateAccession().equals("can1_141573|Heavy|Rattus_RLRS_scoreIncrease_4499")) {
+                System.out.println("debug");
+            }
             //For each merged uncertain region, generate assembled contigs
             List<Contig> assembledContigs = new ArrayList<>();
             for (UncertainRegion regionToAssemble : mergedUncertainRegions) {
