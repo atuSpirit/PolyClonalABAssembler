@@ -145,7 +145,7 @@ public class Assembler {
         int min_template_length = 0;  //If a template length is shorter than the min_length, don't output it.
 
         System.out.println("Exporting candidate templates: ");
-        //exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
+        exportCandidateTemplates(templateHookedList, min_template_length, candidateTemplateWithContaminant, contaminantFile);
 
     }
 

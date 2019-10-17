@@ -22,7 +22,9 @@ public class UncertainRegionGraphAssembler {
 
     /* Simple case that does not deal with insertion and deletion in gap region */
     public List<Contig> assembleOneRegionByGraph(UncertainRegion regionToAssemble) {
-        System.out.println("region starting from " + regionToAssemble.getStartPos() + " to " + regionToAssemble.getEndPos());
+        int regionStartPos = regionToAssemble.getStartPos();
+        int regionEndPos = regionToAssemble.getEndPos();
+        System.out.println("region starting from " + regionStartPos + " to " + regionEndPos);
 
         List<DenovoAligned> dnAlignToRightList = new ArrayList<>(regionToAssemble.getDnAlignToRightSet());
         List<DenovoAligned> dnAlignToLeftList = new ArrayList<>(regionToAssemble.getDnAlignToLeftSet());
@@ -71,16 +73,80 @@ public class UncertainRegionGraphAssembler {
 
         buildPSMGraph(assemblyGraph, psmAlignedList);
 
-        System.out.println("assembled contigs");
-        //Extract the longest pathes which are the assembly with best score
-        List<Contig> contigs = findLongestPath(assemblyGraph);
+        //Update the vertex weight of assembly Graph
+        System.out.println("Update the vertex weight of the assembly graph...");
+        List<WeightedVertex> vertexWithMaxWeightList = updateVertexWeight(assemblyGraph);
 
-        //Debug
-        for (Contig contig : contigs) {
+        System.out.println("assemble contigs by tracing longest path");
+
+        //Extract the longest pathes which are the assembly with best score
+        List<Contig> contigs = findLongestPath(vertexWithMaxWeightList);
+
+        Set<Integer> coveredPositions = contigCoveredPos(contigs);
+
+        /* If contigs does not cover all position in the regionToAssemble, find the maxWeightVertex
+            at the rightmost position, find the longest path again and add to contigs.
+         */
+        for (int pos = regionEndPos; pos >= regionStartPos; pos--) {
+            if (!coveredPositions.contains(pos)) {
+                WeightedVertex vertexWithMaxWeight = findVetexWithMaxWeightAtPos(pos, assemblyGraph);
+                if (vertexWithMaxWeight == null) {
+                    coveredPositions.add(pos);
+                    continue;
+                }
+
+                vertexWithMaxWeightList = new ArrayList<>();
+                vertexWithMaxWeightList.add(vertexWithMaxWeight);
+                List<Contig> newContigs = findLongestPath(vertexWithMaxWeightList);
+                contigs.addAll(newContigs);
+                //Update the new covered positions
+                coveredPositions.addAll(contigCoveredPos(newContigs));
+            }
+        }
+
+        for (Contig contig: contigs) {
             System.out.println(contig.toString());
         }
 
         return contigs;
+    }
+
+    /**
+     * Using Major vote to get the AA with highest weight in the position based on
+     * the assembly graph weight. If this position contains only '*' or no vertex, return null.
+     * @param assemblyGraph
+     * @return
+     */
+    private WeightedVertex findVetexWithMaxWeightAtPos(int pos, TreeMap<Integer, List<WeightedVertex>> assemblyGraph) {
+        if (!assemblyGraph.keySet().contains(pos)) {
+            return null;
+        }
+        List<WeightedVertex> vertexList = assemblyGraph.get(pos);
+
+        WeightedVertex maxWeightedVertex = null;
+        int maxWeight = 0;  //The weight of vertex '*' is zero
+        for (WeightedVertex v : vertexList) {
+            if (v.getWeight() > maxWeight) {
+                maxWeightedVertex = v;
+                maxWeight = v.getWeight();
+            } else if ((v.getWeight() > 0) && (v.getWeight() == maxWeight)) {
+                System.err.println("In majorVote, there are two vertices with same weight");
+                System.out.println(maxWeightedVertex.getAA() + " " + maxWeightedVertex.getWeight());
+                System.out.println(v.getAA() + " " + v.getWeight());
+            }
+        }
+
+        return maxWeightedVertex;
+    }
+
+    private Set<Integer> contigCoveredPos(List<Contig> contigs) {
+        Set<Integer> coveredPositions = new HashSet<>();
+        for (Contig contig : contigs) {
+            for (int i = contig.gettStart(); i <= contig.gettEnd(); i++) {
+                coveredPositions.add(i);
+            }
+        }
+        return coveredPositions;
     }
 
     /* TODO: a assembleOneRegionByGraph that will consider the insertion or deletion */
@@ -245,11 +311,11 @@ public class UncertainRegionGraphAssembler {
     /**
      * Find the path with max weight(longest path). They are the assembled contigs
      * with bestScore.
-     * @param assemblyGraph
+     * @param vertexWithMaxWeightList
      * @return
      */
-    List<Contig> findLongestPath(TreeMap<Integer, List<WeightedVertex>> assemblyGraph) {
-        List<WeightedVertex> vertexWithMaxWeightList = updateVertexWeight(assemblyGraph);
+    List<Contig> findLongestPath(List<WeightedVertex> vertexWithMaxWeightList) {
+
         List<Contig> longestPathContigs = new ArrayList<>();
         for (WeightedVertex vertexWithMaxWeight : vertexWithMaxWeightList) {
             longestPathContigs.addAll(backtrack(vertexWithMaxWeight));
